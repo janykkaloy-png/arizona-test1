@@ -1,6 +1,6 @@
 // === НАСТРОЙКИ ===
 const TEST_COUNT = 15;
-const ADMIN_PASSWORD = "12345";
+const ADMIN_PASSWORD = "TryToPassTheExam";
 
 // === СПИСОК ВОПРОСОВ ===
 const questions = [
@@ -237,4 +237,5 @@ function renderAdmin(area){
 }
 
 // === СТАРТ ===
+
 initUI();
