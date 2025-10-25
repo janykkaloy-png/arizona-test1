@@ -43,12 +43,12 @@ function escapeHtml(str) {
   }[s]));
 }
 
-// === АНТИ-ЧИТ: ХРАНИЛИЩЕ ===
+// === АНТИ-ЧИТ ===
 const BLOCK_KEY = "blockedUser_v1";
 const UNLOCK_KEY = "unlockCode_v1";
 let isBlocked = false;
+let isAdminActive = false;
 
-// Установить cookie
 function setCookie(name, value, days = 3650) {
   const d = new Date();
   d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
@@ -67,7 +67,6 @@ function markBlocked(reason = "blocked") {
   try { setCookie(BLOCK_KEY, "1"); } catch(e){}
 }
 
-// Проверка блокировки
 function isUserBlocked() {
   try { if (localStorage.getItem(BLOCK_KEY)) return true; } catch (e) {}
   try { if (sessionStorage.getItem(BLOCK_KEY)) return true; } catch (e) {}
@@ -75,7 +74,6 @@ function isUserBlocked() {
   return false;
 }
 
-// Генерация длинного случайного кода (crypto)
 function generateUnlockCode() {
   const bytes = new Uint8Array(24);
   window.crypto.getRandomValues(bytes);
@@ -83,14 +81,12 @@ function generateUnlockCode() {
   return `UNLOCK-${hex}-${Date.now().toString(36)}`;
 }
 
-// Сброс блокировки
 function clearBlockStorage() {
   try { localStorage.removeItem(BLOCK_KEY); } catch(e){}
   try { sessionStorage.removeItem(BLOCK_KEY); } catch(e){}
   try { document.cookie = `${BLOCK_KEY}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`; } catch(e){}
 }
 
-// === ФУНКЦИЯ БЛОКИРОВКИ С КОДОМ ===
 function blockTest(reason = "Вы покинули вкладку во время теста.") {
   if (isBlocked) return;
   const unlockCode = generateUnlockCode();
@@ -101,7 +97,7 @@ function blockTest(reason = "Вы покинули вкладку во врем�
   const reportText =
     `Нарушение при прохождении теста\nИмя: ${username}\nПричина: ${reason}\nДата: ${new Date().toLocaleString()}\n\n` +
     `Код для разблокировки (введите этот код в поле имени):\n${unlockCode}\n\n` +
-    `(Сохраните этот код — он единственный способ автоматически снять блокировку на этом устройстве)`;
+    `(Сохраните этот код — он единственный способ снять блокировку на этом устройстве)`;
 
   try { localStorage.setItem(UNLOCK_KEY, unlockCode); } catch(e){}
 
@@ -122,13 +118,11 @@ function blockTest(reason = "Вы покинули вкладку во врем�
         <h2 style="color:#ff6b6b;">Тест заблокирован</h2>
         <p>${escapeHtml(reason)}</p>
         <p>Код для разблокировки записан в скачанном документе.</p>
-        <p style="font-size:0.85em;color:#ccc;margin-top:12px;">(Код уникален и меняется каждый раз при блокировке)</p>
       </div>
     `;
   }
 }
 
-// Отключить кнопку "Начать тест"
 function disableStartButton() {
   const startBtn = document.getElementById("startBtn");
   if (startBtn) {
@@ -174,15 +168,16 @@ function initUI() {
           return;
         }
 
-        // Снимаем блокировку при входе в админку
         clearBlockStorage();
         isBlocked = false;
-        alert("Все блокировки сняты! Теперь можно проходить тест без ограничений.");
+        isAdminActive = true; 
+        alert("Все блокировки сняты! Пока вы в админке — блокировка теста не срабатывает.");
 
         renderAdmin(document.getElementById("mainArea"));
         return;
       }
 
+      if (isAdminActive) isAdminActive = false;
       render(tabName);
     });
   });
@@ -204,7 +199,7 @@ function initUI() {
   render("test");
 }
 
-// === СТАРТ ТЕСТА ===
+// --- СТАРТ ТЕСТА ---
 function startTest() {
   const usernameInput = document.getElementById("username");
   const usernameRaw = usernameInput ? usernameInput.value.trim() : "";
@@ -345,4 +340,54 @@ function renderAdmin(area) {
       cb.addEventListener("change", e => {
         const idx = e.target.dataset.index;
         savedFiles[idx].passed = e.target.checked;
-        localStorage.setItem("adminFiles", JSON.stringify
+        localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+      });
+    });
+
+    document.querySelectorAll(".openBtn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        const idx = e.target.dataset.index;
+        const content = savedFiles[idx].content || "";
+        fileViewer.innerHTML = `<pre>${escapeHtml(content)}</pre><button class="btn" id="closeViewerBtn">Закрыть документ</button>`;
+        fileViewer.style.display = "block";
+
+        document.getElementById("closeViewerBtn").addEventListener("click", () => {
+          fileViewer.style.display = "none";
+        });
+      });
+    });
+
+    document.querySelectorAll(".delBtn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        const idx = e.target.dataset.index;
+        if (confirm(`Удалить файл ${savedFiles[idx].name}?`)) {
+          savedFiles.splice(idx, 1);
+          localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+          renderFiles();
+          fileViewer.style.display = "none";
+        }
+      });
+    });
+  }
+
+  renderFiles();
+
+  document.getElementById("clearAllBtn").addEventListener("click", () => {
+    if (confirm("Удалить все записи?")) {
+      savedFiles = [];
+      localStorage.removeItem("adminFiles");
+      renderFiles();
+      fileViewer.style.display = "none";
+    }
+  });
+}
+
+// --- АНТИ-ЧИТ: уход с вкладки ---
+window.addEventListener("blur", () => {
+  if (!isBlocked && !isAdminActive && test) {
+    blockTest("Вы покинули вкладку во время теста.");
+  }
+});
+
+// === СТАРТ ===
+initUI();
