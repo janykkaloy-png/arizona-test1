@@ -2,7 +2,7 @@
 const TEST_COUNT = 15;
 const ADMIN_PASSWORD = "TryToPassTheExam";
 
-// === СПИСОК ВОПРОСОВ ===
+// === ВОПРОСЫ ===
 const questions = [
   { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
   { text: "Как должны разговаривать сотрудники военной полиции?" },
@@ -25,7 +25,7 @@ let test = null;
 let isBlocked = false;
 let isAdminActive = false;
 
-// === ВСПОМОГАТЕЛЬНЫЕ ===
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 function shuffleArray(arr) {
   for (let i = arr.length-1; i>0; i--) {
     const j = Math.floor(Math.random()*(i+1));
@@ -103,9 +103,48 @@ function disableStartButton(){
   }
 }
 
+// === ДОБАВЛЕНИЕ КНОПКИ РАЗБЛОКИРОВКИ ===
+function addUnlockButton(){
+  const container = document.getElementById("username").parentNode;
+  if(document.getElementById("unlockBtn")) return;
+
+  const btn = document.createElement("button");
+  btn.id = "unlockBtn";
+  btn.className = "btn ghost";
+  btn.style.marginTop = "6px";
+  btn.textContent = "Разблокировать";
+  container.appendChild(btn);
+
+  btn.addEventListener("click", ()=>{
+    const input = document.getElementById("username").value.trim();
+    const storedCode = localStorage.getItem(UNLOCK_KEY);
+    if(!storedCode){
+      alert("Нет кода для разблокировки.");
+      return;
+    }
+    if(input === storedCode){
+      clearBlockStorage();
+      localStorage.removeItem(UNLOCK_KEY);
+      isBlocked = false;
+      const startBtn = document.getElementById("startBtn");
+      if(startBtn){
+        startBtn.disabled = false;
+        startBtn.classList.remove("ghost");
+        startBtn.style.opacity = "1";
+        startBtn.title = "";
+      }
+      alert("Тест разблокирован! Можете начать.");
+    } else {
+      alert("Код неверный.");
+    }
+  });
+}
+
 // === ИНИЦИАЛИЗАЦИЯ UI ===
 function initUI(){
   if(localStorage.getItem(BLOCK_KEY)) isBlocked=true;
+
+  addUnlockButton(); // кнопка разблокировки
 
   // вкладки
   document.querySelectorAll(".tab").forEach(tab=>{
