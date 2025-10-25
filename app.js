@@ -45,9 +45,10 @@ function escapeHtml(str) {
 
 // === АНТИ-ЧИТ: ХРАНИЛИЩЕ ===
 const BLOCK_KEY = "blockedUser_v1";
+const UNLOCK_KEY = "unlockCode_v1";
 let isBlocked = false;
 
-// Установить cookie (на долгий срок)
+// Установить cookie
 function setCookie(name, value, days = 3650) {
   const d = new Date();
   d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
@@ -66,28 +67,44 @@ function markBlocked(reason = "blocked") {
   try { setCookie(BLOCK_KEY, "1"); } catch(e){}
 }
 
+// Проверка блокировки
 function isUserBlocked() {
-  try {
-    if (localStorage.getItem(BLOCK_KEY)) return true;
-  } catch (e) {}
-  try {
-    if (sessionStorage.getItem(BLOCK_KEY)) return true;
-  } catch (e) {}
-  try {
-    if (getCookie(BLOCK_KEY)) return true;
-  } catch (e) {}
+  try { if (localStorage.getItem(BLOCK_KEY)) return true; } catch (e) {}
+  try { if (sessionStorage.getItem(BLOCK_KEY)) return true; } catch (e) {}
+  try { if (getCookie(BLOCK_KEY)) return true; } catch (e) {}
   return false;
 }
 
-// === ФУНКЦИЯ БЛОКИРОВКИ ===
+// Генерация длинного случайного кода (crypto)
+function generateUnlockCode() {
+  const bytes = new Uint8Array(24);
+  window.crypto.getRandomValues(bytes);
+  let hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  return `UNLOCK-${hex}-${Date.now().toString(36)}`;
+}
+
+// Сброс блокировки
+function clearBlockStorage() {
+  try { localStorage.removeItem(BLOCK_KEY); } catch(e){}
+  try { sessionStorage.removeItem(BLOCK_KEY); } catch(e){}
+  try { document.cookie = `${BLOCK_KEY}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`; } catch(e){}
+}
+
+// === ФУНКЦИЯ БЛОКИРОВКИ С КОДОМ ===
 function blockTest(reason = "Вы покинули вкладку во время теста.") {
   if (isBlocked) return;
+  const unlockCode = generateUnlockCode();
   markBlocked(reason);
+  isBlocked = true;
 
   const username = test?.username || document.getElementById("username")?.value || "Неизвестный пользователь";
-  const reportText = `Нарушение при прохождении теста\nИмя: ${username}\nПричина: ${reason}\nДата: ${new Date().toLocaleString()}\n\n(Тест аннулирован)`;
+  const reportText =
+    `Нарушение при прохождении теста\nИмя: ${username}\nПричина: ${reason}\nДата: ${new Date().toLocaleString()}\n\n` +
+    `Код для разблокировки (введите этот код в поле имени):\n${unlockCode}\n\n` +
+    `(Сохраните этот код — он единственный способ автоматически снять блокировку на этом устройстве)`;
 
-  // Скачиваем docx с сообщением о нарушении
+  try { localStorage.setItem(UNLOCK_KEY, unlockCode); } catch(e){}
+
   try {
     const blob = new Blob([reportText], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     saveAs(blob, `${username}_нарушение.docx`);
@@ -95,26 +112,17 @@ function blockTest(reason = "Вы покинули вкладку во врем�
     console.error("Ошибка при сохранении отчёта:", e);
   }
 
-  // Очищаем текущий тест и запрещаем новый
   test = null;
   disableStartButton();
 
-  // Заменяем основную область на сообщение о блокировке
   const area = document.getElementById("mainArea");
   if (area) {
     area.innerHTML = `
       <div class="question-box" style="text-align:center;">
         <h2 style="color:#ff6b6b;">Тест заблокирован</h2>
         <p>${escapeHtml(reason)}</p>
-        <p>Вы больше не можете проходить тест на этом устройстве/в этом браузере.</p>
-      </div>
-    `;
-  } else {
-    // fallback — заменить тело
-    document.body.innerHTML = `
-      <div style="text-align:center;margin-top:20vh;">
-        <h1 style="color:red;">Тест заблокирован</h1>
-        <p>${escapeHtml(reason)}</p>
+        <p>Код для разблокировки записан в скачанном документе.</p>
+        <p style="font-size:0.85em;color:#ccc;margin-top:12px;">(Код уникален и меняется каждый раз при блокировке)</p>
       </div>
     `;
   }
@@ -133,10 +141,8 @@ function disableStartButton() {
 
 // === ИНИЦИАЛИЗАЦИЯ ===
 function initUI() {
-  // Проверяем блокировку при старте
   if (isUserBlocked()) {
     isBlocked = true;
-    // Ждём DOMContentLoaded, но если уже загружено — сразу
     document.addEventListener("DOMContentLoaded", () => {
       disableStartButton();
       const area = document.getElementById("mainArea");
@@ -144,7 +150,8 @@ function initUI() {
         area.innerHTML = `
           <div class="question-box" style="text-align:center;">
             <h2 style="color:#ff6b6b;">Доступ заблокирован</h2>
-            <p>Ранее вы покинули вкладку во время теста — повторное прохождение невозможно.</p>
+            <p>Ранее вы покинули вкладку во время теста — повторное прохождение невозможно без кода из отчёта.</p>
+            <p style="font-size:0.85em;color:#ccc;margin-top:12px;">(Вставьте код разблокировки в поле "Имя" и нажмите Начать.)</p>
           </div>
         `;
       }
@@ -166,23 +173,29 @@ function initUI() {
           render("test");
           return;
         }
+
+        // Снимаем блокировку при входе в админку
+        clearBlockStorage();
+        isBlocked = false;
+        alert("Все блокировки сняты! Теперь можно проходить тест без ограничений.");
+
+        renderAdmin(document.getElementById("mainArea"));
+        return;
       }
 
       render(tabName);
     });
   });
 
-  const usernameInput = document.getElementById("username");
-
-  // Добавляем предупреждение рядом с полем/кнопкой (если ещё нет)
+  // Предупреждение под кнопкой
   const existingNote = document.getElementById("antiCheatNote");
   if (!existingNote) {
     const note = document.createElement("p");
     note.id = "antiCheatNote";
     note.className = "small";
     note.style.marginTop = "6px";
-    note.style.color = "#f87171"; // красноватый
-    note.innerHTML = '⚠ <strong>Важно:</strong> не переключайтесь на другие вкладки во время теста — при выходе тест будет заблокирован.';
+    note.style.color = "#f87171";
+    note.innerHTML = '⚠ <strong>Важно:</strong> не переключайтесь на другие вкладки во время теста — при выходе тест будет заблокирован и будет сгенерирован код разблокировки в скачанном документе.';
     const startBtn = document.getElementById("startBtn");
     if (startBtn) startBtn.parentNode.appendChild(note);
   }
@@ -193,13 +206,26 @@ function initUI() {
 
 // === СТАРТ ТЕСТА ===
 function startTest() {
+  const usernameInput = document.getElementById("username");
+  const usernameRaw = usernameInput ? usernameInput.value.trim() : "";
+
+  const storedCode = (() => { try { return localStorage.getItem(UNLOCK_KEY); } catch(e) { return null; } })();
+
+  if (storedCode && usernameRaw === storedCode) {
+    clearBlockStorage();
+    try { localStorage.removeItem(UNLOCK_KEY); } catch(e){}
+    isBlocked = false;
+    alert("Код принят. Тест разблокирован — можете пройти снова.");
+    if (usernameInput) usernameInput.value = "";
+  }
+
   if (isBlocked || isUserBlocked()) {
-    alert("Доступ заблокирован: повторное прохождение теста невозможно.");
+    alert("Доступ заблокирован: повторное прохождение теста невозможно (введите код из отчёта в поле имени, если у вас есть код).");
     disableStartButton();
     return;
   }
 
-  const username = document.getElementById("username").value.trim();
+  const username = usernameRaw;
   if (!username) { alert("Введите имя!"); return; }
 
   const shuffledQuestions = shuffleArray([...questions]).slice(0, TEST_COUNT);
@@ -319,61 +345,4 @@ function renderAdmin(area) {
       cb.addEventListener("change", e => {
         const idx = e.target.dataset.index;
         savedFiles[idx].passed = e.target.checked;
-        localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
-      });
-    });
-
-    document.querySelectorAll(".openBtn").forEach(btn => {
-      btn.addEventListener("click", e => {
-        const idx = e.target.dataset.index;
-        const content = savedFiles[idx].content || "";
-        fileViewer.innerHTML = `<pre>${escapeHtml(content)}</pre><button class="btn" id="closeViewerBtn">Закрыть документ</button>`;
-        fileViewer.style.display = "block";
-
-        document.getElementById("closeViewerBtn").addEventListener("click", () => {
-          fileViewer.style.display = "none";
-        });
-      });
-    });
-
-    document.querySelectorAll(".delBtn").forEach(btn => {
-      btn.addEventListener("click", e => {
-        const idx = e.target.dataset.index;
-        if (confirm(`Удалить файл ${savedFiles[idx].name}?`)) {
-          savedFiles.splice(idx, 1);
-          localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
-          renderFiles();
-          fileViewer.style.display = "none";
-        }
-      });
-    });
-  }
-
-  renderFiles();
-
-  document.getElementById("clearAllBtn").addEventListener("click", () => {
-    if (confirm("Удалить все записи?")) {
-      savedFiles = [];
-      localStorage.removeItem("adminFiles");
-      renderFiles();
-      fileViewer.style.display = "none";
-    }
-  });
-}
-
-// === АНТИ-ЧИТ: СЛУШАТЕЛИ ===
-// Срабатывает когда вкладка становится невидимой
-document.addEventListener("visibilitychange", () => {
-  // блокируем только если тест уже начат и пользователь ещё не был заблокирован
-  if (document.hidden && test && !isBlocked) {
-    blockTest("Пользователь покинул вкладку во время теста.");
-  }
-});
-
-// Очистка временных данных при закрытии — НЕ трогаем localStorage/block (чтобы блокировка осталась)
-window.addEventListener("beforeunload", () => {
-  try { sessionStorage.removeItem("tempTestData"); } catch(e){}
-});
-
-// === СТАРТ ===
-initUI();
+        localStorage.setItem("adminFiles", JSON.stringify
