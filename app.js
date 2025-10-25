@@ -6,17 +6,17 @@ const ADMIN_PASSWORD = "TryToPassTheExam";
 const questions = [
   { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
   { text: "Как должны разговаривать сотрудники военной полиции?" },
-  { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?(не в обед и без разрешения)" },
-  { text: "Что должны иметь при себе сотрудники Военной Полиции?" },
+  { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?" },
+  { text: "Что должны иметь при себе сотрудники военной полиции?" },
   { text: "Что должен делать сотрудник ВП при проверке ВЧ на ЧС, помимо самой проверки?" },
   { text: "Что запрещается сотрудникам ВП при выполнении спец.задачи?" },
   { text: "При каком приказе сотрудник ВП обязан снять маску?" },
   { text: "Каким цветом должен быть автомобиль сотрудника ВП?" },
-  { text: "Что можно носить сотруднику ВП? (аксессуары(от 2))" },
-  { text: "Какой тэг сотрудника Военной Полиции в рации департамента?" },
-  { text: "Сколько минимум минут нужно проверять ВЧ на ЧС?" },
+  { text: "Что можно носить сотруднику ВП? (аксессуары)" },
+  { text: "Какая приписка в рации департамента?" },
+  { text: "Сколько минимум минут проверять ВЧ на чс?" },
   { text: "Кому подчиняются сотрудники ВП?" },
-  { text: "Назовите последовательность действий офицера ВП при виде нарушителя?(Минимум 3 пункта)" },
+  { text: "Последовательность действий офицера ВП при виде нарушителя?" },
   { text: "Какие места помимо ВЧ нужно проверить?" },
   { text: "Недельная норма проверок от состава ВП?" }
 ];
@@ -43,8 +43,114 @@ function escapeHtml(str) {
   }[s]));
 }
 
+// === АНТИ-ЧИТ: ХРАНИЛИЩЕ ===
+const BLOCK_KEY = "blockedUser_v1";
+let isBlocked = false;
+
+// Установить cookie (на долгий срок)
+function setCookie(name, value, days = 3650) {
+  const d = new Date();
+  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/`;
+}
+
+function getCookie(name) {
+  const matches = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return matches ? decodeURIComponent(matches[1]) : null;
+}
+
+function markBlocked(reason = "blocked") {
+  isBlocked = true;
+  try { localStorage.setItem(BLOCK_KEY, JSON.stringify({ reason, date: new Date().toISOString() })); } catch(e){}
+  try { sessionStorage.setItem(BLOCK_KEY, "1"); } catch(e){}
+  try { setCookie(BLOCK_KEY, "1"); } catch(e){}
+}
+
+function isUserBlocked() {
+  try {
+    if (localStorage.getItem(BLOCK_KEY)) return true;
+  } catch (e) {}
+  try {
+    if (sessionStorage.getItem(BLOCK_KEY)) return true;
+  } catch (e) {}
+  try {
+    if (getCookie(BLOCK_KEY)) return true;
+  } catch (e) {}
+  return false;
+}
+
+// === ФУНКЦИЯ БЛОКИРОВКИ ===
+function blockTest(reason = "Вы покинули вкладку во время теста.") {
+  if (isBlocked) return;
+  markBlocked(reason);
+
+  const username = test?.username || document.getElementById("username")?.value || "Неизвестный пользователь";
+  const reportText = `Нарушение при прохождении теста\nИмя: ${username}\nПричина: ${reason}\nДата: ${new Date().toLocaleString()}\n\n(Тест аннулирован)`;
+
+  // Скачиваем docx с сообщением о нарушении
+  try {
+    const blob = new Blob([reportText], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    saveAs(blob, `${username}_нарушение.docx`);
+  } catch (e) {
+    console.error("Ошибка при сохранении отчёта:", e);
+  }
+
+  // Очищаем текущий тест и запрещаем новый
+  test = null;
+  disableStartButton();
+
+  // Заменяем основную область на сообщение о блокировке
+  const area = document.getElementById("mainArea");
+  if (area) {
+    area.innerHTML = `
+      <div class="question-box" style="text-align:center;">
+        <h2 style="color:#ff6b6b;">Тест заблокирован</h2>
+        <p>${escapeHtml(reason)}</p>
+        <p>Вы больше не можете проходить тест на этом устройстве/в этом браузере.</p>
+      </div>
+    `;
+  } else {
+    // fallback — заменить тело
+    document.body.innerHTML = `
+      <div style="text-align:center;margin-top:20vh;">
+        <h1 style="color:red;">Тест заблокирован</h1>
+        <p>${escapeHtml(reason)}</p>
+      </div>
+    `;
+  }
+}
+
+// Отключить кнопку "Начать тест"
+function disableStartButton() {
+  const startBtn = document.getElementById("startBtn");
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.classList.add("ghost");
+    startBtn.style.opacity = "0.6";
+    startBtn.title = "Доступ заблокирован — вы нарушили правила тестирования";
+  }
+}
+
 // === ИНИЦИАЛИЗАЦИЯ ===
 function initUI() {
+  // Проверяем блокировку при старте
+  if (isUserBlocked()) {
+    isBlocked = true;
+    // Ждём DOMContentLoaded, но если уже загружено — сразу
+    document.addEventListener("DOMContentLoaded", () => {
+      disableStartButton();
+      const area = document.getElementById("mainArea");
+      if (area) {
+        area.innerHTML = `
+          <div class="question-box" style="text-align:center;">
+            <h2 style="color:#ff6b6b;">Доступ заблокирован</h2>
+            <p>Ранее вы покинули вкладку во время теста — повторное прохождение невозможно.</p>
+          </div>
+        `;
+      }
+    });
+  }
+
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {
       const tabName = tab.dataset.tab;
@@ -67,12 +173,19 @@ function initUI() {
   });
 
   const usernameInput = document.getElementById("username");
-  const note = document.createElement("p");
-  note.className = "small";
-  note.style.marginTop = "4px";
-  note.style.color = "#999";
-  note.innerHTML = 'Если вы проходите переаттестацию, напишите это рядом с вашим ником:<br><em>Ник на англ. - Переаттестация 1-3</em>';
-  usernameInput.parentNode.insertBefore(note, usernameInput.nextSibling);
+
+  // Добавляем предупреждение рядом с полем/кнопкой (если ещё нет)
+  const existingNote = document.getElementById("antiCheatNote");
+  if (!existingNote) {
+    const note = document.createElement("p");
+    note.id = "antiCheatNote";
+    note.className = "small";
+    note.style.marginTop = "6px";
+    note.style.color = "#f87171"; // красноватый
+    note.innerHTML = '⚠ <strong>Важно:</strong> не переключайтесь на другие вкладки во время теста — при выходе тест будет заблокирован.';
+    const startBtn = document.getElementById("startBtn");
+    if (startBtn) startBtn.parentNode.appendChild(note);
+  }
 
   document.getElementById("startBtn").addEventListener("click", startTest);
   render("test");
@@ -80,6 +193,12 @@ function initUI() {
 
 // === СТАРТ ТЕСТА ===
 function startTest() {
+  if (isBlocked || isUserBlocked()) {
+    alert("Доступ заблокирован: повторное прохождение теста невозможно.");
+    disableStartButton();
+    return;
+  }
+
   const username = document.getElementById("username").value.trim();
   if (!username) { alert("Введите имя!"); return; }
 
@@ -104,8 +223,8 @@ function renderTest() {
   const q = test.shuffledQuestions[test.current];
   area.innerHTML = `
     <div class="question-box">
-      <h3>${test.current + 1}/${TEST_COUNT}: ${q.text}</h3>
-      <input type="text" id="answerInput" placeholder="Введите ответ..." value="${test.answers[test.current] || ''}">
+      <h3>${test.current + 1}/${TEST_COUNT}: ${escapeHtml(q.text)}</h3>
+      <input type="text" id="answerInput" placeholder="Введите ответ..." value="${escapeHtml(test.answers[test.current] || '')}">
       <div>
         <button class="btn" id="nextBtn">${test.current < TEST_COUNT - 1 ? "Далее" : "Закончить"}</button>
       </div>
@@ -242,7 +361,19 @@ function renderAdmin(area) {
   });
 }
 
+// === АНТИ-ЧИТ: СЛУШАТЕЛИ ===
+// Срабатывает когда вкладка становится невидимой
+document.addEventListener("visibilitychange", () => {
+  // блокируем только если тест уже начат и пользователь ещё не был заблокирован
+  if (document.hidden && test && !isBlocked) {
+    blockTest("Пользователь покинул вкладку во время теста.");
+  }
+});
+
+// Очистка временных данных при закрытии — НЕ трогаем localStorage/block (чтобы блокировка осталась)
+window.addEventListener("beforeunload", () => {
+  try { sessionStorage.removeItem("tempTestData"); } catch(e){}
+});
+
 // === СТАРТ ===
 initUI();
-
-
