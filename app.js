@@ -2,6 +2,11 @@
 const TEST_COUNT = 15;
 const ADMIN_PASSWORD = "TryToPassTheExam";
 
+let test = null;
+let isBlocked = false;
+let isAdminMode = false;
+let unlockCode = null;
+
 // === СПИСОК ВОПРОСОВ ===
 const questions = [
   { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
@@ -21,12 +26,15 @@ const questions = [
   { text: "Недельная норма проверок от состава ВП?" }
 ];
 
-// === ПЕРЕМЕННЫЕ ===
-let test = null;
-let isBlocked = false;
-let currentUnlockCode = null;
+// === ЭЛЕМЕНТЫ DOM ===
+const overlay = document.getElementById("blockOverlay");
+const overlayUnlockBtn = document.getElementById("overlayUnlockBtn");
+const overlayInput = document.getElementById("unlockCodeInput");
+const startBtn = document.getElementById("startBtn");
+const usernameInput = document.getElementById("username");
+const unlockBtn = document.getElementById("unlockBtn");
 
-// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+// === ФУНКЦИИ ВСПОМОГАТЕЛЬНЫЕ ===
 function shuffleArray(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -37,144 +45,137 @@ function shuffleArray(arr) {
 
 function escapeHtml(str) {
   if (typeof str !== "string") return str;
-  return str.replace(/[&<>"']/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));
+  return str.replace(/[&<>"']/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s]));
 }
 
-function enableStartButton() {
-  const btn = document.getElementById("startBtn");
-  if(btn){ btn.disabled=false; btn.style.opacity="1"; }
+function generateCode() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let code = "";
+  for (let i = 0; i < 12; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  return code;
 }
 
-function disableStartButton() {
-  const btn = document.getElementById("startBtn");
-  if(btn){ btn.disabled=true; btn.style.opacity="0.6"; }
-}
-
-function generateUnlockCode() {
-  const array = new Uint8Array(12);
-  window.crypto.getRandomValues(array);
-  return Array.from(array).map(b => b.toString(16).padStart(2,"0")).join("") + Date.now().toString(36);
-}
-
-function showUnlockButton() {
-  const btn = document.getElementById("unlockBtn");
-  if(btn) btn.style.display = "inline-block";
-}
-
-function hideUnlockButton() {
-  const btn = document.getElementById("unlockBtn");
-  if(btn) btn.style.display = "none";
-}
-
-// === ИНИЦИАЛИЗАЦИЯ КНОПКИ РАЗБЛОКИРОВКИ ===
-function initUnlockButton() {
-  const usernameEl = document.getElementById("username");
-  if(!usernameEl) return;
-
-  let wrapper = usernameEl.parentNode.querySelector(".name-actions");
-  if(!wrapper){
-    wrapper = document.createElement("div");
-    wrapper.className = "name-actions";
-    wrapper.style.marginTop = "5px";
-    usernameEl.parentNode.appendChild(wrapper);
-  }
-
-  if(!document.getElementById("unlockBtn")){
-    const btn = document.createElement("button");
-    btn.id = "unlockBtn";
-    btn.className = "btn ghost";
-    btn.textContent = "Разблокировать";
-    btn.style.display = "none";
-    wrapper.appendChild(btn);
-
-    btn.addEventListener("click", ()=>{
-      const val = usernameEl.value.trim();
-      if(val === currentUnlockCode){
-        isBlocked = false;
-        enableStartButton();
-        hideUnlockButton();
-        alert("Код принят! Тест разблокирован.");
-      } else {
-        alert("Код неверный.");
-      }
-    });
-  }
-}
-
-// === ИНИЦИАЛИЗАЦИЯ UI ===
-function initUI(){
-  initUnlockButton();
-
-  const startBtn = document.getElementById("startBtn");
-  if(startBtn) startBtn.addEventListener("click", startTest);
-
-  document.querySelectorAll(".tab").forEach(tab=>{
-    tab.addEventListener("click", ()=>{
+// === ИНИЦИАЛИЗАЦИЯ ===
+function initUI() {
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
       const tabName = tab.dataset.tab;
-      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
 
       if(tabName==="admin"){
         const pwd = prompt("Введите пароль для Админки:");
         if(pwd!==ADMIN_PASSWORD){
           alert("Неверный пароль!");
+          document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
           document.querySelector(".tab[data-tab='test']").classList.add("active");
-          renderTest();
+          render("test");
           return;
         }
-        // все блокировки снимаются при входе в админку
+        isAdminMode=true;
         isBlocked=false;
-        enableStartButton();
-        hideUnlockButton();
-        renderAdmin(document.getElementById("mainArea"));
-      } else {
-        renderTest();
+        unlockCode=null;
+        overlay.classList.add("hidden");
+      }else{
+        isAdminMode=false;
       }
+      render(tabName);
     });
   });
+
+  startBtn.addEventListener("click", startTest);
+  unlockBtn.addEventListener("click", tryUnlock);
+  overlayUnlockBtn.addEventListener("click", tryUnlockOverlay);
+
+  render("test");
 }
 
 // === СТАРТ ТЕСТА ===
 function startTest(){
-  if(isBlocked){
-    alert("Тест заблокирован. Введите код из файла и нажмите «Разблокировать».");
+  if(isBlocked && !isAdminMode){
+    alert("Тест заблокирован! Введите код разблокировки.");
     return;
   }
-
-  const username = document.getElementById("username").value.trim();
+  const username = usernameInput.value.trim();
   if(!username){ alert("Введите имя!"); return; }
 
-  const shuffledQuestions = shuffleArray([...questions]).slice(0,TEST_COUNT);
-  test={username, current:0, answers:{}, shuffledQuestions};
+  const shuffledQuestions = shuffleArray([...questions]).slice(0, TEST_COUNT);
+  test = { username, current: 0, answers: {}, shuffledQuestions };
   renderTest();
 }
 
-// === РЕНДЕР ТЕСТА ===
-function renderTest(){
+// === РАЗБЛОКИРОВКА ===
+function tryUnlock(){
+  const code = usernameInput.value.trim();
+  if(code && code === unlockCode){
+    isBlocked=false;
+    unlockCode=null;
+    overlay.classList.add("hidden");
+    alert("Тест разблокирован!");
+    renderTest();
+  }else{
+    alert("Неверный код!");
+  }
+}
+
+function tryUnlockOverlay(){
+  const code = overlayInput.value.trim();
+  if(code && code === unlockCode){
+    isBlocked=false;
+    unlockCode=null;
+    overlay.classList.add("hidden");
+    alert("Тест разблокирован!");
+    renderTest();
+  }else{
+    alert("Неверный код!");
+  }
+}
+
+// === БЛОКИРОВКА ПРИ ВЫХОДЕ ИЗ ВКЛАДКИ ===
+window.addEventListener("blur", ()=>{
+  if(test && !isAdminMode && !isBlocked){
+    isBlocked=true;
+    unlockCode=generateCode();
+    overlay.classList.remove("hidden");
+    overlayInput.value="";
+    saveAs(new Blob([`Тест заблокирован.\nПользователь: ${test.username}\nКод разблокировки: ${unlockCode}`], 
+      {type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}), `${test.username}_блокировка.docx`);
+  }
+});
+
+// === РЕНДЕР ===
+function render(tab){
   const area=document.getElementById("mainArea");
   if(!area) return;
+  if(tab==="admin") renderAdmin(area);
+  else renderTest();
+}
 
-  if(!test){
-    area.innerHTML="<h2>Нажмите «Начать тест»</h2>";
+// === ТЕСТ ===
+function renderTest(){
+  const area=document.getElementById("mainArea");
+  if(isBlocked && !isAdminMode){
+    area.innerHTML=`<h2>Тест заблокирован</h2><p>Введите код разблокировки в поле имени или на оверлее.</p>`;
     return;
   }
-
+  if(!test){
+    area.innerHTML=`<h2>Нажмите «Начать тест»</h2>`;
+    return;
+  }
   const q = test.shuffledQuestions[test.current];
   area.innerHTML=`
     <div class="question-box">
-      <h3>${test.current+1}/${TEST_COUNT}: ${escapeHtml(q.text)}</h3>
-      <input type="text" id="answerInput" placeholder="Введите ответ..." value="${escapeHtml(test.answers[test.current]||'')}">
-      <div style="margin-top:10px;">
+      <h3>${test.current+1}/${TEST_COUNT}: ${q.text}</h3>
+      <input type="text" id="answerInput" placeholder="Введите ответ..." value="${test.answers[test.current]||''}">
+      <div>
         <button class="btn" id="nextBtn">${test.current<TEST_COUNT-1?"Далее":"Закончить"}</button>
       </div>
     </div>
   `;
-
-  const answerInput=document.getElementById("answerInput");
-  if(answerInput) answerInput.addEventListener("input", e=>{ test.answers[test.current]=e.target.value.trim(); });
-
-  const nextBtn=document.getElementById("nextBtn");
-  if(nextBtn) nextBtn.addEventListener("click", nextQuestion);
+  document.getElementById("answerInput").addEventListener("input", e=>{
+    test.answers[test.current]=e.target.value.trim();
+  });
+  document.getElementById("nextBtn").addEventListener("click", nextQuestion);
 }
 
 function nextQuestion(){
@@ -187,30 +188,31 @@ function nextQuestion(){
 function finishTest(){
   if(!test) return;
 
-  let report=`Тест завершён\nИмя: ${test.username}\n\nОтветы:\n`;
+  let reportText=`Тест завершён\nИмя: ${test.username}\n\nОтветы:\n`;
   test.shuffledQuestions.forEach((q,i)=>{
-    report+=`${i+1}. ${q.text}\nОтвет: ${test.answers[i]||""}\n\n`;
+    const ans=test.answers[i]||"";
+    reportText+=`${i+1}. ${q.text}\nОтвет: ${ans}\n\n`;
   });
 
-  try{
-    const blob=new Blob([report], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-    saveAs(blob, `${test.username}_тест.docx`);
-  } catch(e){ console.error(e); }
+  const blob=new Blob([reportText],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  saveAs(blob, `${test.username}_тест.docx`);
 
   const area=document.getElementById("mainArea");
-  area.innerHTML=`<div class="question-box">
-    <h2>Тест завершён</h2>
-    <p>${escapeHtml(test.username)}, скачайте файл и отправьте администратору.</p>
-    <div style="margin-top:10px;">
-      <button class="btn" id="restartBtn">Пройти снова</button>
+  area.innerHTML=`
+    <div class="question-box">
+      <h2>Тест завершён</h2>
+      <p>${escapeHtml(test.username)}, скачайте файл и отправьте администратору.</p>
+      <div>
+        <button class="btn" id="restartBtn">Пройти снова</button>
+      </div>
     </div>
-  </div>`;
-
-  const restartBtn=document.getElementById("restartBtn");
-  if(restartBtn) restartBtn.addEventListener("click", ()=>{ test=null; renderTest(); });
+  `;
+  document.getElementById("restartBtn").addEventListener("click", ()=>{
+    test=null; renderTest();
+  });
 }
 
-// === АДМИНКА ===
+// === АДМИН ===
 function renderAdmin(area){
   area.innerHTML=`
     <h2>Админка — Загрузка результатов</h2>
@@ -228,15 +230,15 @@ function renderAdmin(area){
   const fileViewer=document.getElementById("fileViewer");
   let savedFiles=JSON.parse(localStorage.getItem("adminFiles")||"[]");
 
-  chooseFileBtn.addEventListener("click", ()=>fileInput.click());
+  chooseFileBtn.addEventListener("click",()=>fileInput.click());
 
-  fileInput.addEventListener("change", e=>{
+  fileInput.addEventListener("change",e=>{
     const files=e.target.files;
     Array.from(files).forEach(file=>{
       const reader=new FileReader();
       reader.onload=function(evt){
         savedFiles.push({name:file.name, passed:false, content:evt.target.result});
-        localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+        localStorage.setItem("adminFiles",JSON.stringify(savedFiles));
         renderFiles();
       };
       reader.readAsText(file);
@@ -255,32 +257,29 @@ function renderAdmin(area){
     `).join("");
 
     document.querySelectorAll(".passCheckbox").forEach(cb=>{
-      cb.addEventListener("change", e=>{
+      cb.addEventListener("change",e=>{
         const idx=e.target.dataset.index;
         savedFiles[idx].passed=e.target.checked;
-        localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+        localStorage.setItem("adminFiles",JSON.stringify(savedFiles));
       });
     });
 
     document.querySelectorAll(".openBtn").forEach(btn=>{
-      btn.addEventListener("click", e=>{
+      btn.addEventListener("click",e=>{
         const idx=e.target.dataset.index;
         const content=savedFiles[idx].content||"";
         fileViewer.innerHTML=`<pre>${escapeHtml(content)}</pre><button class="btn" id="closeViewerBtn">Закрыть документ</button>`;
         fileViewer.style.display="block";
-
-        document.getElementById("closeViewerBtn").addEventListener("click", ()=>{
-          fileViewer.style.display="none";
-        });
+        document.getElementById("closeViewerBtn").addEventListener("click",()=>{fileViewer.style.display="none";});
       });
     });
 
     document.querySelectorAll(".delBtn").forEach(btn=>{
-      btn.addEventListener("click", e=>{
+      btn.addEventListener("click",e=>{
         const idx=e.target.dataset.index;
         if(confirm(`Удалить файл ${savedFiles[idx].name}?`)){
           savedFiles.splice(idx,1);
-          localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+          localStorage.setItem("adminFiles",JSON.stringify(savedFiles));
           renderFiles();
           fileViewer.style.display="none";
         }
@@ -290,7 +289,7 @@ function renderAdmin(area){
 
   renderFiles();
 
-  document.getElementById("clearAllBtn").addEventListener("click", ()=>{
+  document.getElementById("clearAllBtn").addEventListener("click",()=>{
     if(confirm("Удалить все записи?")){
       savedFiles=[];
       localStorage.removeItem("adminFiles");
@@ -298,6 +297,11 @@ function renderAdmin(area){
       fileViewer.style.display="none";
     }
   });
+
+  // Разблокируем тест при входе в админку
+  isBlocked=false;
+  unlockCode=null;
+  overlay.classList.add("hidden");
 }
 
 // === СТАРТ ===
