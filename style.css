@@ -115,7 +115,6 @@ table {
   border-collapse: collapse;
   margin-top: 12px;
 }
-
 table th,
 table td {
   border: 1px solid rgba(255,255,255,0.2);
@@ -133,27 +132,6 @@ table td {
   overflow-y: auto;
 }
 
-/* --- Админка: список файлов --- */
-#fileList li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#fileViewer {
-  background: var(--card);
-  color: var(--text);
-  padding: 16px;
-  border-radius: 10px;
-  max-height: 600px;
-  overflow-y: auto;
-  font-family: monospace;
-}
-
-#fileViewer button#closeViewerBtn {
-  margin-left: auto;
-}
-
 /* === Новый дизайн блокировки === */
 .overlay {
   position: fixed;
@@ -165,7 +143,6 @@ table td {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
   z-index: 9999;
   animation: fadeIn 0.3s ease;
 }
@@ -211,15 +188,14 @@ table td {
   color: #aaa;
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 footer {
   margin-top: 20px;
   text-align: center;
   color: #777;
   font-size: 13px;
-}
-
-/* --- Анимации --- */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
