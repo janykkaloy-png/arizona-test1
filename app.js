@@ -1,6 +1,9 @@
+// === НАСТРОЙКИ ===
 const TEST_COUNT = 15;
 const ADMIN_PASSWORD = "TryToPassTheExam";
+const AES_KEY = "my_secret_aes_key"; // Ключ AES для шифрования всех файлов
 
+// === ВОПРОСЫ ===
 const questions = [
   { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
   { text: "Как должны разговаривать сотрудники военной полиции?" },
@@ -12,7 +15,7 @@ const questions = [
   { text: "Каким цветом должен быть автомобиль сотрудника ВП?" },
   { text: "Что можно носить сотруднику ВП?(аксессуары)" },
   { text: "Какая приписка в рации департамента?" },
-  { text: "Сколько минимум минут проверять ВЧ на ЧС?" },
+  { text: "Сколько минимум минут проверять ВЧ на чс?" },
   { text: "Кому подчиняются сотрудники ВП?" },
   { text: "Последовательность действий офицера ВП при виде нарушителя?" },
   { text: "Какие места помимо ВЧ нужно проверить?" },
@@ -20,17 +23,9 @@ const questions = [
 ];
 
 let test = null;
-let unlockCodes = []; // Одноразовые коды
+let blocked = false;
 
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
-
-// ======= ФУНКЦИИ ДЛЯ ШИФРОВАНИЯ =======
-function escapeHtml(str) {
-  if (typeof str !== "string") return str;
-  return str.replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
-}
-
+// --- ВСПОМОГАТЕЛЬНЫЕ ---
 function shuffleArray(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -39,344 +34,275 @@ function shuffleArray(arr) {
   return arr;
 }
 
-function bytesToHex(bytes) {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-function hexToBytes(hex) {
-  if (!hex) return new Uint8Array();
-  const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
-  return out;
-}
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-function base64ToArrayBuffer(b64) {
-  const binary = atob(b64);
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
-}
-function cryptoRandomHex(bytesLen) {
-  const arr = crypto.getRandomValues(new Uint8Array(bytesLen));
-  return bytesToHex(arr);
+function escapeHtml(str) {
+  if (typeof str !== "string") return str;
+  return str.replace(/[&<>"']/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));
 }
 
-async function deriveKeyFromPassword(password, saltHex) {
-  const salt = hexToBytes(saltHex);
-  const baseKey = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
-  const key = await crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: 200_000, hash: "SHA-256" },
-    baseKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
-  return key;
-}
-
-async function encryptTextWithPassword(plainText, masterCode, saltHex) {
-  const key = await deriveKeyFromPassword(masterCode, saltHex);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(plainText));
-  return `${arrayBufferToBase64(iv)}:${arrayBufferToBase64(ct)}`;
-}
-
-async function decryptTextWithPassword(encryptedStr, masterCode, saltHex) {
-  const [ivB64, ctB64] = encryptedStr.split(":");
-  if (!ivB64 || !ctB64) throw new Error("Формат зашифрованной строки неверен.");
-  const iv = new Uint8Array(base64ToArrayBuffer(ivB64));
-  const ct = base64ToArrayBuffer(ctB64);
-  const key = await deriveKeyFromPassword(masterCode, saltHex);
-  const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
-  return decoder.decode(plainBuf);
-}
-
-// ======= MASTER CODE =======
-function getOrCreateMasterCode() {
-  let mc = localStorage.getItem("masterCode");
-  let salt = localStorage.getItem("masterCodeSalt");
-  if (!mc || !salt) {
-    mc = cryptoRandomHex(8);
-    salt = cryptoRandomHex(16);
-    localStorage.setItem("masterCode", mc);
-    localStorage.setItem("masterCodeSalt", salt);
-  }
-  return { masterCode: mc, saltHex: salt };
-}
-
-function setNewMasterCode() {
-  const mc = cryptoRandomHex(8);
-  const salt = cryptoRandomHex(16);
-  localStorage.setItem("masterCode", mc);
-  localStorage.setItem("masterCodeSalt", salt);
-  return { masterCode: mc, saltHex: salt };
-}
-
-// ======= UI И БЛОКИРОВКА =======
-let isBlocked = false;
-const overlay = document.getElementById("blockOverlay");
-const unlockInput = document.getElementById("unlockCodeInput");
-const unlockBtn = document.getElementById("overlayUnlockBtn");
-
-function showOverlay() {
-  overlay.classList.remove("hidden");
-  isBlocked = true;
-}
-
-function hideOverlay() {
-  overlay.classList.add("hidden");
-  isBlocked = false;
-}
-
-function setupLocking() {
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) showOverlay();
+function blockTest() {
+  blocked = true;
+  document.querySelectorAll("input, button").forEach(el => {
+    if (!el.id.includes("unlock") && !el.closest(".tabs")) el.disabled = true;
   });
-  window.addEventListener("blur", () => {
-    if (!document.hidden) showOverlay();
-  });
+  const area = document.getElementById("mainArea");
+  if (!area.querySelector(".blocked-note")) {
+    const note = document.createElement("p");
+    note.className = "blocked-note";
+    note.style.color = "red";
+    note.innerText = "Тест заблокирован! Введите код для разблокировки или используйте админку.";
+    area.prepend(note);
+  }
 }
 
-unlockBtn.addEventListener("click", () => {
-  const code = unlockInput.value.trim();
-  if (!code) return alert("Введите код!");
-  const idx = unlockCodes.indexOf(code);
-  if (idx !== -1) {
-    unlockCodes.splice(idx, 1);
-    hideOverlay();
-    alert("Сайт разблокирован!");
-  } else {
-    alert("Неверный код!");
-  }
-});
+function unblockTest() {
+  blocked = false;
+  document.querySelectorAll("input, button").forEach(el => el.disabled = false);
+  const note = document.querySelector(".blocked-note");
+  if (note) note.remove();
+}
 
-// ======= ИНИЦИАЛИЗАЦИЯ UI =======
+// === UI INIT ===
 function initUI() {
-  setupLocking();
-
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {
       const tabName = tab.dataset.tab;
       document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
+
       if (tabName === "admin") {
         const pwd = prompt("Введите пароль для Админки:");
         if (pwd !== ADMIN_PASSWORD) {
           alert("Неверный пароль!");
           document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
           document.querySelector(".tab[data-tab='test']").classList.add("active");
-          render("test");
+          renderTest();
           return;
         }
       }
+
       render(tabName);
     });
   });
 
-  const usernameInput = document.getElementById("username");
-  if (usernameInput && !document.getElementById("retestNote")) {
-    const note = document.createElement("p");
-    note.id = "retestNote";
-    note.className = "small";
-    note.style.marginTop = "4px";
-    note.style.color = "#999";
-    note.innerHTML = 'Если вы проходите переаттестацию, напишите это рядом с вашим ником:<br><em>Ник на англ. - Переаттестация 1-3</em>';
-    usernameInput.parentNode.insertBefore(note, usernameInput.nextSibling);
-  }
+  document.getElementById("startBtn").addEventListener("click", startTest);
+  document.getElementById("unlockBtn").addEventListener("click", tryUnlock);
 
-  const startBtn = document.getElementById("startBtn");
-  if (startBtn) startBtn.addEventListener("click", startTest);
+  document.addEventListener("visibilitychange", () => {
+    if (test && !blocked && document.hidden) blockTest();
+  });
 
-  render("test");
-}
+  window.addEventListener("blur", () => {
+    if (test && !blocked) blockTest();
+  });
 
-// ======= ТЕСТ =======
-function startTest() {
-  const username = (document.getElementById("username") || {}).value || "";
-  const name = username.trim();
-  if (!name) { alert("Введите имя!"); return; }
-  const shuffled = shuffleArray([...questions]).slice(0, TEST_COUNT);
-  test = { username: name, current: 0, answers: {}, shuffledQuestions: shuffled };
   renderTest();
 }
 
-function render(tab) {
-  const area = document.getElementById("mainArea");
-  if (!area) return;
-  if (tab === "admin") renderAdmin(area);
-  else renderTest();
-}
-
-function renderTest() {
-  const area = document.getElementById("mainArea");
-  if (!test) { area.innerHTML = `<h2>Нажмите «Начать тест»</h2>`; return; }
-  const q = test.shuffledQuestions[test.current];
-  area.innerHTML = `
-    <div class="question-box">
-      <h3>${test.current + 1}/${TEST_COUNT}: ${escapeHtml(q.text)}</h3>
-      <input type="text" id="answerInput" placeholder="Введите ответ..." value="${escapeHtml(test.answers[test.current] || '')}">
-      <div style="margin-top:12px;display:flex;justify-content:flex-end;">
-        <button class="btn" id="nextBtn">${test.current < TEST_COUNT - 1 ? "Далее" : "Закончить"}</button>
-      </div>
-    </div>
-  `;
-  const input = document.getElementById("answerInput");
-  input.addEventListener("input", e => { test.answers[test.current] = e.target.value; });
-  document.getElementById("nextBtn").addEventListener("click", () => {
-    if (test.current < TEST_COUNT - 1) { test.current++; renderTest(); }
-    else finishTest();
-  });
-}
-
-async function finishTest() {
-  if (!test) return;
-  let reportText = `Тест завершён\nИмя: ${test.username}\n\nОтветы:\n\n`;
-  test.shuffledQuestions.forEach((q, i) => {
-    const ans = test.answers[i] || "";
-    reportText += `${i + 1}. ${q.text}\nОтвет: ${ans}\n\n`;
-  });
-
-  const mcObj = getOrCreateMasterCode();
-  try {
-    const encrypted = await encryptTextWithPassword(reportText, mcObj.masterCode, mcObj.saltHex);
-    const filePayload = `ENCv1\n${mcObj.saltHex}\n${test.username}_тест.txt\n${encrypted}`;
-    const blob = new Blob([filePayload], { type: "application/octet-stream" });
-    saveAs(blob, `${test.username}_тест.enc`);
-  } catch (err) {
-    console.error("Encryption error:", err);
-    alert("Ошибка при шифровании файла.");
+// === СТАРТ ТЕСТА ===
+function startTest() {
+  const username = document.getElementById("username").value.trim();
+  if (!username) {
+    alert("Введите имя!");
     return;
   }
 
-  const area = document.getElementById("mainArea");
-  area.innerHTML = `
-    <div class="question-box">
-      <h2>Тест завершён</h2>
-      <p>${escapeHtml(test.username)}, зашифрованный файл сохранён. Отправьте .enc администратору.</p>
-      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;">
-        <button class="btn" id="restartBtn">Пройти снова</button>
-      </div>
-    </div>
-  `;
-  document.getElementById("restartBtn").addEventListener("click", () => { test = null; renderTest(); });
+  const shuffledQuestions = shuffleArray([...questions]).slice(0, TEST_COUNT);
+  test = { username, current: 0, answers: {}, shuffledQuestions };
+
+  renderTest();
 }
 
-// ======= АДМИНКА =======
-function renderAdmin(area) {
-  const mcObj = getOrCreateMasterCode();
-  area.innerHTML = "";
-  const wrapper = document.createElement("div");
+// === ПРОВЕРКА КОДА РАЗБЛОКИРОВКИ ===
+function tryUnlock() {
+  const code = document.getElementById("username").value.trim();
+  const savedFiles = JSON.parse(localStorage.getItem("adminFiles") || "[]");
 
-  wrapper.innerHTML = `
-    <h2>Админка — дешифровка и управление</h2>
-    <p>Master unlock code (используется для дешифровки):</p>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
-      <div style="background:rgba(255,255,255,0.03);padding:8px;border-radius:6px;min-width:180px;">${escapeHtml(mcObj.masterCode)}</div>
-      <button class="btn" id="regenMasterBtn">Сгенерировать новый код</button>
-    </div>
-
-    <p>Генерация одноразового кода для разблокировки:</p>
-    <button class="btn" id="genUnlockBtn">Сгенерировать код</button>
-    <div id="currentUnlockCodes" style="margin-top:8px;color:#0ea5a4;"></div>
-
-    <p>Загрузите .enc файл (формат ENCv1), чтобы дешифровать:</p>
-    <input type="file" id="encFileInput" accept=".enc,.txt" />
-    <div id="encFileList" style="margin-top:12px;"></div>
-    <div id="fileViewer" class="report" style="display:none;margin-top:12px;"></div>
-
-    <div style="margin-top:12px;">
-      <button class="btn" id="unlockOverlayBtn">Разблокировать сайт</button>
-      <button class="btn" id="clearMasterBtn" style="margin-left:8px;">Удалить master code</button>
-    </div>
-  `;
-  area.appendChild(wrapper);
-
-  // Кнопки
-  wrapper.querySelector("#regenMasterBtn").addEventListener("click", () => {
-    if (!confirm("Сгенерировать новый master code? Старые файлы не будут дешифроваться старым кодом.")) return;
-    const newObj = setNewMasterCode();
-    alert("Новый master code: " + newObj.masterCode);
-    render("admin");
-  });
-
-  wrapper.querySelector("#clearMasterBtn").addEventListener("click", () => {
-    if (!confirm("Удалить сохранённый master code?")) return;
-    localStorage.removeItem("masterCode");
-    localStorage.removeItem("masterCodeSalt");
-    alert("Master code удалён.");
-    render("admin");
-  });
-
-  wrapper.querySelector("#unlockOverlayBtn").addEventListener("click", () => {
-    hideOverlay();
-    alert("Оверлей скрыт.");
-  });
-
-  // Генерация одноразового кода
-  wrapper.querySelector("#genUnlockBtn").addEventListener("click", () => {
-    const code = cryptoRandomHex(4); // 8 символов
-    unlockCodes.push(code);
-    const display = wrapper.querySelector("#currentUnlockCodes");
-    display.innerHTML = `Текущие коды: ${unlockCodes.join(", ")}`;
-    alert("Сгенерирован код: " + code);
-  });
-
-  // Дешифровка
-  const encFileInput = wrapper.querySelector("#encFileInput");
-  const encFileList = wrapper.querySelector("#encFileList");
-  const fileViewer = wrapper.querySelector("#fileViewer");
-
-  encFileInput.addEventListener("change", async (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    const text = await f.text();
-    const parts = text.split("\n");
-    if (parts.length < 4 || parts[0].trim() !== "ENCv1") {
-      alert("Файл имеет неверный формат. Ожидается ENCv1.");
-      return;
-    }
-    const saltHex = parts[1].trim();
-    const origName = parts[2].trim();
-    const encryptedStr = parts.slice(3).join("\n").trim();
-
-    encFileList.innerHTML = `
-      <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:8px;">
-        <strong>${escapeHtml(origName)}</strong>
-        <div style="margin-top:8px;">
-          <button class="btn" id="decryptBtn">Дешифровать и открыть</button>
-          <button class="btn small" id="downloadRawBtn" style="margin-left:8px;">Скачать .enc</button>
-        </div>
-      </div>
-    `;
-
-    encFileList.querySelector("#downloadRawBtn").addEventListener("click", () => {
-      const blob = new Blob([text], { type: "application/octet-stream" });
-      saveAs(blob, f.name);
-    });
-
-    encFileList.querySelector("#decryptBtn").addEventListener("click", async () => {
-      const master = localStorage.getItem("masterCode");
-      if (!master) {
-        alert("Master code отсутствует. Сначала сгенерируйте его.");
+  for (let f of savedFiles) {
+    try {
+      // Сначала декодируем base64 → бинарный массив → UTF-8 строка
+      const encrypted = atob(f.content);
+      const wordArray = CryptoJS.lib.WordArray.create(
+        Uint8Array.from(encrypted.split('').map(c=>c.charCodeAt(0)))
+      );
+      const decrypted = CryptoJS.AES.decrypt(wordArray, AES_KEY).toString(CryptoJS.enc.Utf8);
+      if (decrypted === code) {
+        unblockTest();
+        alert("Тест разблокирован!");
         return;
       }
-      try {
-        const decrypted = await decryptTextWithPassword(encryptedStr, master, saltHex);
-        fileViewer.style.display = "block";
-        fileViewer.innerHTML = `<h3>${escapeHtml(origName)}</h3><pre>${escapeHtml(decrypted)}</pre>`;
-      } catch (err) {
-        alert("Ошибка дешифровки: " + (err.message || ""));
-      }
-    });
+    } catch (e) {}
+  }
+  alert("Неверный код!");
+}
+
+// === РЕНДЕР ===
+function render(tab) {
+  if (tab === "admin") renderAdmin();
+  else renderTest();
+}
+
+// === РЕНДЕР ТЕСТА ===
+function renderTest() {
+  const area = document.getElementById("mainArea");
+
+  if (!test) {
+    area.innerHTML = `<h2>Нажмите «Начать тест»</h2>`;
+    return;
+  }
+
+  const q = test.shuffledQuestions[test.current];
+
+  area.innerHTML = `
+    <div class="question-box">
+      <h3>${test.current + 1}/${TEST_COUNT}: ${q.text}</h3>
+      <input type="text" id="answerInput" placeholder="Введите ответ..." value="${test.answers[test.current] || ''}">
+      <button class="btn" id="nextBtn">${test.current < TEST_COUNT - 1 ? "Далее" : "Закончить"}</button>
+    </div>
+  `;
+
+  if (blocked) blockTest();
+
+  document.getElementById("answerInput").addEventListener("input", e => {
+    test.answers[test.current] = e.target.value.trim();
+  });
+
+  document.getElementById("nextBtn").addEventListener("click", nextQuestion);
+}
+
+function nextQuestion() {
+  if (test.current < TEST_COUNT - 1) {
+    test.current++;
+    renderTest();
+  } else finishTest();
+}
+
+// === ЗАВЕРШЕНИЕ ТЕСТА ===
+function finishTest() {
+  let reportText = `Тест завершён\nИмя: ${test.username}\n\nОтветы:\n\n`;
+  test.shuffledQuestions.forEach((q, i) => {
+    reportText += `${i + 1}. ${q.text}\nОтвет: ${test.answers[i] || ""}\n\n`;
+  });
+
+  // Зашифрованный AES + сохранение как бинарный DOCX
+  const encrypted = CryptoJS.AES.encrypt(reportText, AES_KEY).toString();
+  const base64 = btoa(encrypted);
+  const blob = new Blob([base64], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  saveAs(blob, `${test.username}_тест.docx`);
+
+  document.getElementById("mainArea").innerHTML = `
+    <div class="question-box">
+      <h2>Тест завершён</h2>
+      <p>${escapeHtml(test.username)}, скачайте файл и отправьте администратору.</p>
+      <button class="btn" id="restartBtn">Пройти снова</button>
+    </div>
+  `;
+
+  document.getElementById("restartBtn").addEventListener("click", () => {
+    test = null;
+    unblockTest();
+    renderTest();
   });
 }
 
-// ======= СТАРТ =======
-document.addEventListener("DOMContentLoaded", () => {
-  try { initUI(); } catch (err) { console.error("init error:", err); alert("Ошибка инициализации — см. консоль."); }
-});
+// === АДМИНКА ===
+function renderAdmin() {
+  const area = document.getElementById("mainArea");
+  area.innerHTML = `
+    <h2>Админка — Загрузка результатов</h2>
+
+    <input type="file" id="fileInput" multiple style="display:none;">
+    <button class="btn" id="chooseFileBtn">Выбрать файл</button>
+
+    <ul id="fileList"></ul>
+    <div id="fileViewer" class="report" style="display:none;"></div>
+
+    <button class="btn" id="clearAllBtn">Удалить все записи</button>
+  `;
+
+  const fileInput = document.getElementById("fileInput");
+  const chooseFileBtn = document.getElementById("chooseFileBtn");
+  const fileList = document.getElementById("fileList");
+  const fileViewer = document.getElementById("fileViewer");
+
+  let savedFiles = JSON.parse(localStorage.getItem("adminFiles") || "[]");
+
+  chooseFileBtn.addEventListener("click", () => fileInput.click());
+
+  fileInput.addEventListener("change", e => {
+    [...e.target.files].forEach(file => {
+      const reader = new FileReader();
+      reader.onload = evt => {
+        // Сохраняем как base64 для корректного DOCX
+        const base64 = arrayBufferToBase64(evt.target.result);
+        savedFiles.push({ name: file.name, passed: false, content: base64 });
+        localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+        renderFiles();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+    fileInput.value = "";
+  });
+
+  function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  function renderFiles() {
+    fileList.innerHTML = savedFiles.map((f, i) => `
+      <li>
+        <strong>${escapeHtml(f.name)}</strong>
+        <input type="checkbox" class="passCheckbox" data-index="${i}" ${f.passed ? "checked" : ""}> Пройден
+        <button class="btn small openBtn" data-index="${i}">Открыть</button>
+        <button class="btn small delBtn" data-index="${i}">Удалить</button>
+      </li>
+    `).join("");
+
+    document.querySelectorAll(".passCheckbox").forEach(cb => {
+      cb.addEventListener("change", e => {
+        savedFiles[e.target.dataset.index].passed = e.target.checked;
+        localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+      });
+    });
+
+    document.querySelectorAll(".openBtn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        const file = savedFiles[e.target.dataset.index];
+        fileViewer.innerHTML = `<pre>${escapeHtml(file.content)}</pre><button class="btn" id="closeViewerBtn">Закрыть документ</button>`;
+        fileViewer.style.display = "block";
+        document.getElementById("closeViewerBtn").addEventListener("click", () => fileViewer.style.display = "none");
+      });
+    });
+
+    document.querySelectorAll(".delBtn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        const index = e.target.dataset.index;
+        if (confirm(`Удалить файл ${savedFiles[index].name}?`)) {
+          savedFiles.splice(index, 1);
+          localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+          renderFiles();
+          fileViewer.style.display = "none";
+        }
+      });
+    });
+  }
+
+  document.getElementById("clearAllBtn").addEventListener("click", () => {
+    if (confirm("Удалить все записи?")) {
+      savedFiles = [];
+      localStorage.removeItem("adminFiles");
+      renderFiles();
+      fileViewer.style.display = "none";
+    }
+  });
+
+  renderFiles();
+}
+
+// === СТАРТ ===
+initUI();
