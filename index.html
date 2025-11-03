@@ -1,42 +1,46 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Arizona RP — Тест Военной Полиции</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arizona RP — Тест Военной Полиции</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app">
-  <header>
-    <h1>Arizona RP — Тест Военной Полиции</h1>
-    <div class="tabs">
-      <div class="tab active" data-tab="test">Тест</div>
-      <div class="tab" data-tab="admin">Админ</div>
+    <div class="app">
+        <div class="warning-banner">
+            ⚠️ Внимание! После старта теста, если вы покинете вкладку — тест будет заблокирован!
+        </div>
+        
+        <header>
+            <h1>Arizona RP — Тест Военной Полиции</h1>
+            <div class="tabs">
+                <div class="tab active" data-tab="test">Тест</div>
+                <div class="tab" data-tab="admin">Админ</div>
+            </div>
+        </header>
+
+        <div class="card" id="mainArea">
+            Введите имя и нажмите «Начать тест».
+        </div>
+
+        <div class="card">
+            <div class="small">Инструкция</div>
+            <p class="small">
+                Введите имя и начните тест. Если вы покинете вкладку — тест будет заблокирован.
+                <br><em>Если вы проходите переаттестацию, напишите это рядом с ником: Ник на англ. - Переаттестация 1-3</em>
+            </p>
+
+            <input type="text" id="username" placeholder="Ваше имя">
+            <button class="btn" id="startBtn">Начать тест</button>
+            <button class="btn ghost" id="unlockBtn">Разблокировать</button>
+        </div>
+
+        <footer>© Arizona RP | Военная Полиция</footer>
     </div>
-  </header>
 
-  <div class="card" id="mainArea">
-    Введите имя и нажмите «Начать тест».
-  </div>
-
-  <div class="card">
-    <div class="small">Инструкция</div>
-    <p class="small">
-      Введите имя и начните тест. Если вы покинете вкладку — тест будет заблокирован.
-      <br><em>Если вы проходите переаттестацию, напишите это рядом с ником: Ник на англ. - Переаттестация 1-3</em>
-    </p>
-
-    <input type="text" id="username" placeholder="Ваше имя">
-    <button class="btn" id="startBtn">Начать тест</button>
-    <button class="btn ghost" id="unlockBtn">Разблокировать</button>
-  </div>
-
-  <footer>© Arizona RP | Военная Полиция</footer>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-<script src="app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
