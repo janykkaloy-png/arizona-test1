@@ -5,11 +5,17 @@
   --text: #e6eef6;
   --text-muted: #999;
   --btn-hover: #14b8a6;
+  --error: #ff4444;
+  --warning: #ffaa00;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: var(--bg);
   color: var(--text);
   display: flex;
@@ -17,6 +23,7 @@ body {
   align-items: center;
   min-height: 100vh;
   padding: 20px;
+  line-height: 1.5;
 }
 
 .app {
@@ -24,11 +31,31 @@ body {
   max-width: 900px;
 }
 
+.warning-banner {
+  border: 3px solid var(--warning);
+  background-color: rgba(255, 170, 0, 0.1);
+  color: #ffcc00;
+  font-weight: bold;
+  font-size: 16px;
+  text-align: center;
+  padding: 12px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.8em;
+  color: var(--accent);
 }
 
 .tabs {
@@ -37,40 +64,53 @@ header {
 }
 
 .tab {
-  padding: 8px 16px;
+  padding: 10px 20px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s ease;
+  font-weight: 500;
 }
 
 .tab:hover {
   background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
 }
 
 .tab.active {
   background: var(--accent);
   color: #000;
   font-weight: bold;
+  box-shadow: 0 4px 12px rgba(14, 165, 164, 0.3);
 }
 
 .card {
   background: var(--card);
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
 input[type="text"] {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: none;
-  margin-top: 10px;
-  margin-bottom: 10px;
-  background: rgba(255,255,255,0.1);
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  margin-top: 12px;
+  margin-bottom: 15px;
+  background: rgba(255,255,255,0.08);
   color: var(--text);
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(255,255,255,0.12);
+  box-shadow: 0 0 0 2px rgba(14, 165, 164, 0.2);
 }
 
 input[type="text"]::placeholder {
@@ -81,15 +121,20 @@ input[type="text"]::placeholder {
   background: var(--accent);
   border: none;
   color: #000;
-  padding: 8px 16px;
+  padding: 12px 24px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
-  transition: background 0.2s;
+  transition: all 0.3s ease;
+  font-size: 15px;
+  margin-right: 10px;
+  margin-bottom: 10px;
 }
 
 .btn:hover {
   background: var(--btn-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(14, 165, 164, 0.3);
 }
 
 .btn.ghost {
@@ -98,104 +143,135 @@ input[type="text"]::placeholder {
   color: var(--text);
 }
 
+.btn.ghost:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.3);
+}
+
 .btn.small {
-  padding: 4px 10px;
+  padding: 8px 16px;
   font-size: 0.85em;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .question-box {
   background: rgba(255,255,255,0.05);
-  padding: 16px;
+  padding: 20px;
   border-radius: 10px;
   margin-bottom: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 12px;
+.question-box h3 {
+  margin-top: 0;
+  color: var(--accent);
+  font-size: 1.2em;
 }
-table th,
-table td {
+
+.small {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  margin: 5px 0;
+}
+
+.blocked-note {
+  color: white;
+  background: var(--error);
+  padding: 15px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 20px;
+  border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.2);
-  padding: 8px;
-  text-align: left;
 }
 
 .report {
   background: rgba(255,255,255,0.05);
-  padding: 12px;
+  padding: 16px;
   border-radius: 8px;
-  margin-top: 12px;
+  margin-top: 16px;
   white-space: pre-wrap;
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
+  border: 1px solid rgba(255,255,255,0.1);
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
 }
 
-/* === Новый дизайн блокировки === */
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 36, 0.95);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  animation: fadeIn 0.3s ease;
-}
-
-.overlay.hidden {
-  display: none;
-}
-
-.overlay-content {
-  background: rgba(255, 0, 0, 0.1);
-  border: 2px solid #ff4d4d;
-  border-radius: 12px;
-  padding: 30px 40px;
-  text-align: center;
-  max-width: 400px;
-  color: #ff6666;
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
-}
-
-.overlay-content h2 {
-  margin-bottom: 10px;
-  color: #ff4d4d;
-  font-size: 1.5em;
-  text-shadow: 0 0 6px rgba(255, 0, 0, 0.7);
-}
-
-.overlay-content p {
-  color: #ff9999;
-  margin-bottom: 20px;
-}
-
-.overlay-content input {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  width: 100%;
-  padding: 10px;
-  border-radius: 6px;
-  margin-bottom: 15px;
-}
-
-.overlay-content input::placeholder {
-  color: #aaa;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes slideIn {
+  from {
+      transform: translateX(100%);
+      opacity: 0;
+  }
+  to {
+      transform: translateX(0);
+      opacity: 1;
+  }
 }
 
 footer {
-  margin-top: 20px;
+  margin-top: 30px;
   text-align: center;
-  color: #777;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 20px 0;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+  
+  header {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .tabs {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .card {
+    padding: 16px;
+  }
+  
+  .btn {
+    width: 100%;
+    margin-right: 0;
+  }
+}
+
+/* Стили для списка файлов в админке */
+#fileList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#fileList li {
+  background: rgba(255,255,255,0.05);
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#fileList li strong {
+  flex: 1;
+  min-width: 200px;
+}
+
+.passCheckbox {
+  margin-right: 5px;
 }
