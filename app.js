@@ -2,27 +2,98 @@
 const TEST_COUNT = 15;
 const ADMIN_PASSWORD = "TryToPassTheExam";
 const AES_KEY = "my_secret_aes_key_2024";
+const INACTIVITY_TIMEOUT = 20000; // 20 секунд
 
 const questions = [
     { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
     { text: "Как должны разговаривать сотрудники военной полиции?" },
-    { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?" },
-    { text: "Что должны иметь при себе сотрудники военной полиции?" },
+    { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?(Не с разрешения и не в обед)" },
+    { text: "Что должны иметь при себе сотрудники военной полиции при проверке ВЧ на ЧС?" },
     { text: "Что должен делать сотрудник ВП при проверке ВЧ на ЧС, помимо самой проверки?" },
     { text: "Что запрещается сотрудникам ВП при выполнении спец.задачи?" },
     { text: "При каком приказе сотрудник ВП обязан снять маску?" },
-    { text: "Каким цветом должен быть автомобиль сотрудника ВП?" },
-    { text: "Что можно носить сотруднику ВП?(аксессуары)" },
+    { text: "Какими цветами должен быть покрашен автомобиль сотрудника ВП?" },
+    { text: "Что можно носить сотруднику ВП?(аксессуары от 2)" },
     { text: "Какая приписка в рации департамента?" },
-    { text: "Сколько минимум минут проверять ВЧ на чс?" },
+    { text: "Сколько минимум минут нужно проверять ВЧ на ЧС?" },
     { text: "Кому подчиняются сотрудники ВП?" },
     { text: "Последовательность действий офицера ВП при виде нарушителя?" },
-    { text: "Какие места помимо ВЧ нужно проверить?" },
-    { text: "Недельная норма проверок от состава ВП?" }
+    { text: "Какие места помимо Военных Частей нужно проверять?" },
+    { text: "Недельная норма проверок состава И" }
 ];
 
 let test = null;
 let blocked = false;
+let inactivityTimer = null;
+let lastActivityTime = Date.now();
+
+// --- УПРАВЛЕНИЕ ДИСКЛЕЙМЕРОМ ---
+function showDisclaimer() {
+    const username = document.getElementById("username").value.trim();
+    if (!username) {
+        showError("Введите имя перед началом теста!");
+        return;
+    }
+    
+    const modal = document.getElementById("disclaimerModal");
+    modal.style.display = "flex";
+    
+    // Добавляем обработчики для кнопок дисклеймера
+    document.getElementById("closeDisclaimerBtn").onclick = closeDisclaimer;
+    document.getElementById("confirmStartBtn").onclick = confirmStartTest;
+}
+
+function closeDisclaimer() {
+    const modal = document.getElementById("disclaimerModal");
+    modal.style.display = "none";
+}
+
+function confirmStartTest() {
+    const modal = document.getElementById("disclaimerModal");
+    modal.style.display = "none";
+    
+    // Запускаем тест после подтверждения
+    actuallyStartTest();
+}
+
+// --- СИСТЕМА БЕЗДЕЙСТВИЯ ---
+function resetInactivityTimer() {
+    lastActivityTime = Date.now();
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+    }
+    
+    if (test && !test.blocked) {
+        inactivityTimer = setTimeout(() => {
+            const timeSinceLastActivity = Date.now() - lastActivityTime;
+            if (test && !test.blocked && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+                showError("Тест заблокирован за бездействие! Возможно, вы использовали телефон для подсматривания ответов.");
+                blockTest();
+            }
+        }, INACTIVITY_TIMEOUT);
+    }
+}
+
+function trackActivity() {
+    resetInactivityTimer();
+}
+
+function showInactivityWarning() {
+    // Показываем предупреждение за 5 секунд до блокировки
+    const timeLeft = INACTIVITY_TIMEOUT - (Date.now() - lastActivityTime);
+    if (timeLeft <= 5000 && !document.getElementById('inactivityWarning')) {
+        const warning = document.createElement('div');
+        warning.className = 'inactivity-warning';
+        warning.id = 'inactivityWarning';
+        warning.innerHTML = `⚠️ Внимание! Бездействие обнаружено!<br>Тест будет заблокирован через ${Math.ceil(timeLeft/1000)} сек.`;
+        document.body.appendChild(warning);
+        
+        setTimeout(() => {
+            const w = document.getElementById('inactivityWarning');
+            if (w) w.remove();
+        }, 5000);
+    }
+}
 
 // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 function shuffleArray(arr) {
@@ -48,6 +119,15 @@ function generateReadableCode() {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
+}
+
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
 }
 
 // --- СОХРАНЕНИЕ И ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ---
@@ -110,6 +190,12 @@ function blockTest() {
         }
     });
 
+    // Останавливаем таймер бездействия
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+    }
+
     // Генерация кода разблокировки
     if (!test.unlockCode) {
         test.unlockCode = generateReadableCode();
@@ -131,11 +217,12 @@ function createUnlockFile() {
 Имя пользователя: ${test.username}
 Код разблокировки: ${test.unlockCode}
 
-Для разблокировки теста обратитесь к администратору.
-Сообщите администратору этот код.
-
+Причина блокировки: Бездействие (отсутствие активности более 20 секунд)
 Тест заблокирован: ${new Date().toLocaleString('ru-RU')}
 Прогресс: ${test.current + 1}/${TEST_COUNT} вопросов
+
+Для разблокировки теста обратитесь к администратору.
+Сообщите администратору этот код.
 
 Arizona RP | Военная Полиция`;
 
@@ -150,9 +237,10 @@ function renderBlockedScreen() {
     const area = document.getElementById("mainArea");
     area.innerHTML = `
         <div class="blocked-note">
-            <h2>🚫 Тест заблокирован!</h2>
-            <p>Вы покинули вкладку во время тестирования.</p>
-            <p><strong>Файл с кодом разблокировки был скачан.</strong></p>
+            <h2>🚫 Тест заблокирован за бездействие!</h2>
+            <p>Система зафиксировала отсутствие активности более 20 секунд.</p>
+            <p><strong>Возможная причина: использование телефона для подсматривания ответов</strong></p>
+            <p>Файл с кодом разблокировки был скачан.</p>
             <p>Отправьте файл <strong>${test.username}_код_разблокировки.docx</strong> администратору.</p>
             <p>Администратор предоставит вам код для разблокировки теста.</p>
             
@@ -182,6 +270,7 @@ function renderBlockedScreen() {
             document.querySelectorAll("input, button").forEach(el => el.disabled = false);
             saveTestState();
             showMessage("Тест успешно разблокирован!", "success");
+            resetInactivityTimer();
             renderTest();
         } else {
             showError("Неверный код разблокировки!");
@@ -202,6 +291,7 @@ function unblockTest() {
         document.querySelectorAll("input, button").forEach(el => el.disabled = false);
         saveTestState();
         showMessage("Тест успешно разблокирован!", "success");
+        resetInactivityTimer();
         renderTest();
     } else {
         showError("Неверный код разблокировки!");
@@ -213,8 +303,15 @@ function initUI() {
     // Загружаем состояние теста при запуске
     loadTestState();
     
+    // Слушатели активности (только мышь и клавиатура)
+    document.addEventListener('mousemove', trackActivity);
+    document.addEventListener('mousedown', trackActivity);
+    document.addEventListener('keypress', trackActivity);
+    document.addEventListener('keydown', trackActivity);
+    
     document.querySelectorAll(".tab").forEach(tab => {
         tab.addEventListener("click", () => {
+            trackActivity();
             const tabName = tab.dataset.tab;
             document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
             tab.classList.add("active");
@@ -233,20 +330,36 @@ function initUI() {
         });
     });
 
-    document.getElementById("startBtn").addEventListener("click", startTest);
+    // Обновляем обработчик - теперь показываем дисклеймер
+    document.getElementById("startBtn").addEventListener("click", showDisclaimer);
     document.getElementById("unlockBtn").addEventListener("click", unblockTest);
 
     document.addEventListener("visibilitychange", () => {
         if (test && !blocked && document.hidden) {
-            blockTest();
+            showInactivityWarning();
+            setTimeout(() => blockTest(), 2000);
         }
     });
 
     window.addEventListener("blur", () => {
         if (test && !blocked) {
-            blockTest();
+            showInactivityWarning();
+            setTimeout(() => blockTest(), 2000);
         }
     });
+
+    // Скрываем кнопку разблокировки по умолчанию
+    document.getElementById("unlockBtn").style.display = "none";
+
+    // Запускаем проверку бездействия каждую секунду
+    setInterval(() => {
+        if (test && !test.blocked) {
+            const timeSinceLastActivity = Date.now() - lastActivityTime;
+            if (timeSinceLastActivity >= INACTIVITY_TIMEOUT - 5000) {
+                showInactivityWarning();
+            }
+        }
+    }, 1000);
 
     renderTest();
 }
@@ -287,8 +400,8 @@ function showError(message) {
     showMessage(message, "error");
 }
 
-// --- СТАРТ ТЕСТА ---
-function startTest() {
+// --- ОБНОВЛЕННЫЙ СТАРТ ТЕСТА ---
+function actuallyStartTest() {
     const username = document.getElementById("username").value.trim();
     if (!username) {
         showError("Введите имя!");
@@ -308,7 +421,11 @@ function startTest() {
     // Сохраняем состояние
     saveTestState();
     
-    showMessage("Тест начат! Не покидайте вкладку.", "success");
+    // Показываем кнопку разблокировки
+    document.getElementById("unlockBtn").style.display = "inline-block";
+    
+    showMessage("Тест начат! Не покидайте вкладку и будьте активны (двигайте мышкой/печатайте).", "success");
+    resetInactivityTimer();
     renderTest();
 }
 
@@ -321,6 +438,8 @@ function renderTest() {
             <div class="question-box">
                 <h2>Добро пожаловать в тест Военной Полиции</h2>
                 <p>Введите ваше имя в поле ниже и нажмите "Начать тест" для начала тестирования.</p>
+                <p><strong>Важно:</strong> Система отслеживает активность! Двигайте мышкой или печатайте каждые 20 секунд.</p>
+                <p style="color: var(--warning);"><strong>⚠️ Использование телефона для подсматривания ответов приведет к блокировке теста!</strong></p>
             </div>
         `;
         return;
@@ -343,22 +462,34 @@ function renderTest() {
                     ${test.current < TEST_COUNT - 1 ? "Следующий вопрос" : "Завершить тест"}
                 </button>
             </div>
+            <div class="small" style="margin-top: 15px; color: var(--warning);">
+                ⚠️ Система отслеживает активность! Двигайте мышкой или печатайте для предотвращения блокировки.
+            </div>
         </div>
     `;
 
-    document.getElementById("answerInput").addEventListener("input", (e) => {
+    const answerInput = document.getElementById("answerInput");
+    answerInput.addEventListener("input", (e) => {
+        trackActivity();
         test.answers[test.current] = e.target.value.trim();
         saveTestState();
     });
     
-    document.getElementById("answerInput").addEventListener("keypress", (e) => {
+    answerInput.addEventListener("keypress", (e) => {
+        trackActivity();
         if (e.key === "Enter") {
             nextQuestion();
         }
     });
     
-    document.getElementById("nextBtn").addEventListener("click", nextQuestion);
-    document.getElementById("answerInput").focus();
+    answerInput.addEventListener("mousedown", trackActivity);
+    
+    document.getElementById("nextBtn").addEventListener("click", () => {
+        trackActivity();
+        nextQuestion();
+    });
+    
+    answerInput.focus();
 }
 
 function nextQuestion() {
@@ -409,8 +540,17 @@ Arizona RP | Военная Полиция
     
     saveAs(blob, `${test.username}_тест_результаты.docx`);
 
+    // Останавливаем таймер бездействия
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+    }
+
     // Очищаем состояние после завершения теста
     clearTestState();
+
+    // Скрываем кнопку разблокировки
+    document.getElementById("unlockBtn").style.display = "none";
 
     document.getElementById("mainArea").innerHTML = `
         <div class="question-box">
@@ -441,8 +581,8 @@ function renderAdmin() {
             <h2>🔧 Админ-панель</h2>
             
             <div style="margin-bottom: 30px;">
-                <h3>Загрузка результатов</h3>
-                <p>Загрузите файлы результатов тестов для просмотра.</p>
+                <h3>Загрузка и проверка результатов</h3>
+                <p>Загрузите файлы результатов тестов для проверки.</p>
                 
                 <input type="file" id="fileInput" multiple accept=".docx,.txt" style="display: none;">
                 <button class="btn" id="chooseFileBtn">📁 Выбрать файлы</button>
@@ -453,6 +593,17 @@ function renderAdmin() {
                 </div>
                 
                 <div id="fileViewer" class="report" style="display: none; margin-top: 20px;"></div>
+                
+                <!-- Панель оценки -->
+                <div id="gradingPanel" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <h4>📝 Оценка ответов</h4>
+                    <div id="gradingStats" class="grading-stats"></div>
+                    <div id="answersList"></div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" id="saveGradingBtn">💾 Сохранить оценку</button>
+                        <button class="btn ghost" id="closeGradingBtn">❌ Закрыть</button>
+                    </div>
+                </div>
             </div>
             
             <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
@@ -465,8 +616,11 @@ function renderAdmin() {
     const chooseFileBtn = document.getElementById("chooseFileBtn");
     const fileList = document.getElementById("fileList");
     const fileViewer = document.getElementById("fileViewer");
+    const gradingPanel = document.getElementById("gradingPanel");
     
     let savedFiles = JSON.parse(localStorage.getItem("adminFiles") || "[]");
+    let currentGradingFile = null;
+    let currentGradingIndex = null;
 
     chooseFileBtn.addEventListener("click", () => fileInput.click());
     
@@ -478,33 +632,44 @@ function renderAdmin() {
             const reader = new FileReader();
             reader.onload = (evt) => {
                 const base64 = arrayBufferToBase64(evt.target.result);
-                savedFiles.push({
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    uploaded: new Date().toLocaleString('ru-RU'),
-                    passed: false,
-                    content: base64
-                });
+                
+                // Проверяем, не загружен ли уже этот файл
+                const existingFileIndex = savedFiles.findIndex(f => f.name === file.name);
+                if (existingFileIndex !== -1) {
+                    // Обновляем существующий файл
+                    savedFiles[existingFileIndex] = {
+                        ...savedFiles[existingFileIndex],
+                        content: base64,
+                        size: file.size,
+                        uploaded: new Date().toLocaleString('ru-RU')
+                    };
+                    showMessage(`Файл "${file.name}" обновлен!`, "success");
+                } else {
+                    // Добавляем новый файл
+                    savedFiles.push({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        uploaded: new Date().toLocaleString('ru-RU'),
+                        passed: false,
+                        content: base64,
+                        graded: false,
+                        score: 0,
+                        correctAnswers: 0,
+                        totalAnswers: 0,
+                        gradingData: null
+                    });
+                    showMessage(`Файл "${file.name}" загружен!`, "success");
+                }
                 
                 localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
                 renderFiles();
-                showMessage(`Файл "${file.name}" загружен!`, "success");
             };
             reader.readAsArrayBuffer(file);
         });
         
         fileInput.value = "";
     });
-
-    function arrayBufferToBase64(buffer) {
-        let binary = '';
-        const bytes = new Uint8Array(buffer);
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return btoa(binary);
-    }
 
     function renderFiles() {
         if (savedFiles.length === 0) {
@@ -514,22 +679,31 @@ function renderAdmin() {
 
         fileList.innerHTML = savedFiles.map((f, i) => `
             <li>
-                <strong>${escapeHtml(f.name)}</strong>
-                <span class="small">(${(f.size / 1024).toFixed(1)} KB, ${f.uploaded})</span>
+                <div class="file-info">
+                    <strong>${escapeHtml(f.name)}</strong>
+                    <span class="small">${(f.size / 1024).toFixed(1)} KB</span>
+                </div>
+                <div class="small">Загружен: ${f.uploaded}</div>
+                ${f.graded ? `
+                    <div class="small" style="color: ${f.score >= 70 ? 'var(--success)' : 'var(--error)'}; font-weight: bold;">
+                        Оценка: ${f.score}% (${f.correctAnswers}/${f.totalAnswers})
+                    </div>
+                ` : ''}
                 
-                <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+                <div class="file-actions">
                     <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" class="passCheckbox" data-index="${i}" ${f.passed ? "checked" : ""}>
+                        <input type="checkbox" class="pass-checkbox" data-index="${i}" ${f.passed ? "checked" : ""}>
                         <span class="small">Пройден</span>
                     </label>
                     
-                    <button class="btn small openBtn" data-index="${i}">👁️ Просмотр</button>
-                    <button class="btn small ghost delBtn" data-index="${i}">❌ Удалить</button>
+                    <button class="btn small open-btn" data-index="${i}">👁️ Просмотр</button>
+                    <button class="btn small grade-btn" data-index="${i}">📝 ${f.graded ? 'Изменить оценку' : 'Оценить'}</button>
+                    <button class="btn small ghost del-btn" data-index="${i}">❌ Удалить</button>
                 </div>
             </li>
         `).join("");
 
-        document.querySelectorAll(".passCheckbox").forEach(cb => {
+        document.querySelectorAll(".pass-checkbox").forEach(cb => {
             cb.addEventListener("change", (e) => {
                 const index = parseInt(e.target.dataset.index);
                 savedFiles[index].passed = e.target.checked;
@@ -541,7 +715,7 @@ function renderAdmin() {
             });
         });
 
-        document.querySelectorAll(".openBtn").forEach(btn => {
+        document.querySelectorAll(".open-btn").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 const index = parseInt(e.target.dataset.index);
                 const file = savedFiles[index];
@@ -561,13 +735,29 @@ function renderAdmin() {
 
                     let contentHTML = '';
                     if (decryptedPlain && decryptedPlain.length > 0) {
-                        contentHTML = `<pre>${escapeHtml(decryptedPlain)}</pre>`;
+                        // Если есть данные оценки, добавляем их к просмотру
+                        let reportWithGrading = decryptedPlain;
+                        if (file.graded) {
+                            reportWithGrading += `\n\n=== ОЦЕНКА АДМИНИСТРАТОРА ===\n`;
+                            reportWithGrading += `Оценка: ${file.score}%\n`;
+                            reportWithGrading += `Правильных ответов: ${file.correctAnswers}/${file.totalAnswers}\n`;
+                            reportWithGrading += `Статус: ${file.passed ? '✅ ПРОЙДЕН' : '❌ НЕ ПРОЙДЕН'}\n`;
+                            
+                            if (file.gradingData) {
+                                reportWithGrading += `\nДетальная оценка:\n`;
+                                file.gradingData.forEach((item, idx) => {
+                                    reportWithGrading += `\n${idx + 1}. ${item.correct ? '✅ ПРАВИЛЬНО' : '❌ НЕПРАВИЛЬНО'}\n`;
+                                });
+                            }
+                        }
+                        
+                        contentHTML = `<pre>${escapeHtml(reportWithGrading)}</pre>`;
                     } else {
                         contentHTML = `<pre style="color: var(--error);">Не удалось расшифровать файл. Возможно, это не зашифрованный документ теста.</pre>`;
                     }
 
                     fileViewer.innerHTML = `
-                        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <strong>${escapeHtml(file.name)}</strong>
                             <button class="btn small" id="closeViewerBtn">✖ Закрыть</button>
                         </div>
@@ -584,7 +774,15 @@ function renderAdmin() {
             });
         });
 
-        document.querySelectorAll(".delBtn").forEach(btn => {
+        document.querySelectorAll(".grade-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const index = parseInt(e.target.dataset.index);
+                const file = savedFiles[index];
+                renderGradingPanel(file, index);
+            });
+        });
+
+        document.querySelectorAll(".del-btn").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 const index = parseInt(e.target.dataset.index);
                 const fileName = savedFiles[index].name;
@@ -594,10 +792,154 @@ function renderAdmin() {
                     localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
                     renderFiles();
                     fileViewer.style.display = "none";
+                    gradingPanel.style.display = "none";
                     showMessage(`Файл "${fileName}" удален`, "success");
                 }
             });
         });
+    }
+
+    function renderGradingPanel(fileData, fileIndex) {
+        currentGradingFile = fileData;
+        currentGradingIndex = fileIndex;
+        
+        const gradingStats = document.getElementById("gradingStats");
+        const answersList = document.getElementById("answersList");
+        
+        try {
+            const storedBase64 = fileData.content;
+            const fileText = atob(storedBase64);
+            let decryptedPlain = null;
+            
+            try {
+                const encrypted = atob(fileText);
+                decryptedPlain = CryptoJS.AES.decrypt(encrypted, AES_KEY).toString(CryptoJS.enc.Utf8);
+            } catch (err) {
+                decryptedPlain = null;
+            }
+
+            if (decryptedPlain) {
+                // Используем существующие данные оценки или парсим заново
+                let answers = fileData.gradingData || parseAnswersFromReport(decryptedPlain);
+                const correctCount = answers.filter(a => a.correct).length;
+                const totalCount = answers.length;
+                const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+                
+                gradingStats.innerHTML = `
+                    Правильных ответов: ${correctCount}/${totalCount} | Оценка: ${score}%
+                    ${fileData.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
+                `;
+                
+                answersList.innerHTML = answers.map((answer, index) => `
+                    <div class="answer-item ${answer.correct ? 'correct' : 'incorrect'}">
+                        <div><strong>Вопрос ${index + 1}:</strong> ${escapeHtml(answer.question)}</div>
+                        <div style="margin: 5px 0;"><strong>Ответ:</strong> ${escapeHtml(answer.answer)}</div>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                            <input type="checkbox" class="correct-checkbox" data-index="${index}" ${answer.correct ? 'checked' : ''}>
+                            <span>✅ Правильный ответ</span>
+                        </label>
+                    </div>
+                `).join('');
+
+                // Обновляем галочки в реальном времени
+                document.querySelectorAll('.correct-checkbox').forEach(cb => {
+                    cb.addEventListener('change', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        answers[index].correct = e.target.checked;
+                        
+                        // Обновляем статистику
+                        const newCorrectCount = answers.filter(a => a.correct).length;
+                        const newScore = Math.round((newCorrectCount / totalCount) * 100);
+                        gradingStats.innerHTML = `
+                            Правильных ответов: ${newCorrectCount}/${totalCount} | Оценка: ${newScore}%
+                            ${fileData.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
+                        `;
+                        
+                        // Обновляем стиль ответа
+                        const answerItem = e.target.closest('.answer-item');
+                        if (e.target.checked) {
+                            answerItem.classList.add('correct');
+                            answerItem.classList.remove('incorrect');
+                        } else {
+                            answerItem.classList.add('incorrect');
+                            answerItem.classList.remove('correct');
+                        }
+                    });
+                });
+
+                document.getElementById("saveGradingBtn").onclick = () => {
+                    saveGradedResults(fileData, answers, fileIndex);
+                };
+
+                document.getElementById("closeGradingBtn").onclick = () => {
+                    gradingPanel.style.display = 'none';
+                };
+
+                gradingPanel.style.display = 'block';
+            }
+        } catch (error) {
+            showError("Ошибка при загрузке ответов для оценки: " + error.message);
+        }
+    }
+
+    function parseAnswersFromReport(reportText) {
+        const lines = reportText.split('\n');
+        const answers = [];
+        let currentQuestion = null;
+        let currentAnswer = null;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            if (line.match(/^\d+\./)) {
+                if (currentQuestion && currentAnswer !== null) {
+                    answers.push({
+                        question: currentQuestion,
+                        answer: currentAnswer,
+                        correct: false
+                    });
+                }
+                currentQuestion = line.replace(/^\d+\.\s*/, '');
+                currentAnswer = null;
+            } else if (line.startsWith('Ответ:') && currentQuestion) {
+                currentAnswer = line.replace('Ответ:', '').trim();
+            }
+        }
+
+        if (currentQuestion && currentAnswer !== null) {
+            answers.push({
+                question: currentQuestion,
+                answer: currentAnswer,
+                correct: false
+            });
+        }
+
+        return answers;
+    }
+
+    function saveGradedResults(originalFile, gradedAnswers, fileIndex) {
+        const correctCount = gradedAnswers.filter(a => a.correct).length;
+        const totalCount = gradedAnswers.length;
+        const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+        
+        // Сохраняем оценку в данных файла
+        savedFiles[fileIndex] = {
+            ...savedFiles[fileIndex],
+            graded: true,
+            score: score,
+            correctAnswers: correctCount,
+            totalAnswers: totalCount,
+            gradingData: gradedAnswers,
+            passed: score >= 70 // Автоматически отмечаем как пройденный если оценка >= 70%
+        };
+        
+        localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+        
+        showMessage(`Оценка сохранена! Результат: ${score}%`, "success");
+        
+        // Закрываем панель оценки и обновляем список
+        gradingPanel.style.display = "none";
+        renderFiles();
     }
 
     document.getElementById("clearAllBtn").addEventListener("click", () => {
@@ -606,11 +948,13 @@ function renderAdmin() {
             return;
         }
         
-        if (confirm("Удалить все загруженные файлы?")) {
+        if (confirm("Удалить все загруженные файлы и оценки?")) {
             localStorage.removeItem("adminFiles");
             savedFiles = [];
-            showMessage("Все файлы удалены", "success");
+            showMessage("Все файлы и оценки удалены", "success");
             renderFiles();
+            fileViewer.style.display = "none";
+            gradingPanel.style.display = "none";
         }
     });
 
