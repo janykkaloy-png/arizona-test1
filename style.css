@@ -16,7 +16,7 @@
 
 body {
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
   display: flex;
@@ -30,6 +30,7 @@ body {
 .app {
   width: 100%;
   max-width: 900px;
+  position: relative;
 }
 
 .warning-banner {
@@ -69,20 +70,13 @@ header h1 {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
   cursor: pointer;
-  transition: all 0.3s ease;
   font-weight: 500;
-}
-
-.tab:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
 }
 
 .tab.active {
   background: var(--accent);
   color: #000;
   font-weight: bold;
-  box-shadow: 0 4px 12px rgba(14, 165, 164, 0.3);
 }
 
 .card {
@@ -90,7 +84,6 @@ header h1 {
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
   border: 1px solid rgba(255,255,255,0.05);
 }
 
@@ -104,14 +97,11 @@ input[type="text"] {
   background: rgba(255,255,255,0.08);
   color: var(--text);
   font-size: 15px;
-  transition: all 0.3s ease;
 }
 
 input[type="text"]:focus {
   outline: none;
   border-color: var(--accent);
-  background: rgba(255,255,255,0.12);
-  box-shadow: 0 0 0 2px rgba(14, 165, 164, 0.2);
 }
 
 input[type="text"]::placeholder {
@@ -126,27 +116,15 @@ input[type="text"]::placeholder {
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
-  transition: all 0.3s ease;
   font-size: 15px;
   margin-right: 10px;
   margin-bottom: 10px;
-}
-
-.btn:hover {
-  background: var(--btn-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(14, 165, 164, 0.3);
 }
 
 .btn.ghost {
   background: transparent;
   border: 1px solid rgba(255,255,255,0.2);
   color: var(--text);
-}
-
-.btn.ghost:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.3);
 }
 
 .btn.small {
@@ -157,7 +135,6 @@ input[type="text"]::placeholder {
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  transform: none;
 }
 
 .question-box {
@@ -204,7 +181,6 @@ input[type="text"]::placeholder {
   font-size: 14px;
 }
 
-/* Стили для модального окна дисклеймера */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -216,7 +192,6 @@ input[type="text"]::placeholder {
     justify-content: center;
     align-items: center;
     z-index: 10000;
-    backdrop-filter: blur(5px);
 }
 
 .modal-content {
@@ -228,7 +203,6 @@ input[type="text"]::placeholder {
     max-height: 80vh;
     overflow-y: auto;
     border: 2px solid var(--accent);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .modal-content h2 {
@@ -273,7 +247,6 @@ input[type="text"]::placeholder {
     margin: 0;
 }
 
-/* Стили для панели оценки */
 .correct-checkbox {
   width: 18px;
   height: 18px;
@@ -283,10 +256,6 @@ input[type="text"]::placeholder {
 
 .grade-btn {
   background: #f59e0b;
-}
-
-.grade-btn:hover {
-  background: #d97706;
 }
 
 .answer-item {
@@ -316,7 +285,6 @@ input[type="text"]::placeholder {
   font-weight: bold;
 }
 
-/* Индикатор бездействия */
 .inactivity-warning {
   position: fixed;
   top: 10px;
@@ -328,24 +296,72 @@ input[type="text"]::placeholder {
   border-radius: 8px;
   font-weight: bold;
   z-index: 10002;
-  animation: pulse 2s infinite;
 }
 
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.7; }
-  100% { opacity: 1; }
+.footer-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 }
 
-@keyframes slideIn {
-  from {
-      transform: translateX(100%);
-      opacity: 0;
-  }
-  to {
-      transform: translateX(0);
-      opacity: 1;
-  }
+#fileList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#fileList li {
+  background: rgba(255,255,255,0.05);
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+#fileList li strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.pass-checkbox {
+  margin-right: 5px;
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.file-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.open-btn {
+  background: #3b82f6;
+}
+
+.del-btn {
+  background: var(--error);
+}
+
+.file-info + .small:last-child {
+    margin-top: 5px;
+    padding: 3px 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.grading-stats span {
+    margin-left: 10px;
+    font-size: 0.9em;
 }
 
 footer {
@@ -356,7 +372,6 @@ footer {
   padding: 20px 0;
 }
 
-/* Адаптивность */
 @media (max-width: 768px) {
   body {
     padding: 10px;
@@ -402,60 +417,20 @@ footer {
   .warning-icon {
     margin-bottom: 5px;
   }
-}
 
-/* Стили для списка файлов в админке */
-#fileList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-#fileList li {
-  background: rgba(255,255,255,0.05);
-  padding: 15px;
-  margin-bottom: 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-
-#fileList li strong {
-  display: block;
-  margin-bottom: 5px;
-}
-
-.pass-checkbox {
-  margin-right: 5px;
-}
-
-.file-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  flex-wrap: wrap;
-}
-
-.file-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-/* Стили для кнопок в админке */
-.open-btn {
-  background: #3b82f6;
-}
-
-.open-btn:hover {
-  background: #2563eb;
-}
-
-.del-btn {
-  background: var(--error);
-}
-
-.del-btn:hover {
-  background: #dc2626;
+  .footer-content {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+  
+  .file-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .file-actions .btn {
+    width: 100%;
+    margin: 2px 0;
+  }
 }
