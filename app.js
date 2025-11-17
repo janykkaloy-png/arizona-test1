@@ -2,7 +2,10 @@
 const TEST_COUNT = 15;
 const ADMIN_PASSWORD = "TryToPassTheExam";
 const AES_KEY = "my_secret_aes_key_2024";
-const INACTIVITY_TIMEOUT = 20000; // 20 секунд
+const INACTIVITY_TIMEOUT = 20000;
+
+// Переменная для хранения статуса авторизации (только на время сессии)
+let isAdminAuthenticated = false;
 
 const questions = [
     { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
@@ -27,6 +30,30 @@ let blocked = false;
 let inactivityTimer = null;
 let lastActivityTime = Date.now();
 
+// --- ФУНКЦИИ АДМИН АУТЕНТИФИКАЦИИ ---
+function authenticateAdmin() {
+    if (isAdminAuthenticated) {
+        return true;
+    }
+    
+    const pwd = prompt("Введите пароль для Админки:");
+    if (pwd === ADMIN_PASSWORD) {
+        isAdminAuthenticated = true;
+        return true;
+    } else {
+        alert("Неверный пароль!");
+        return false;
+    }
+}
+
+function logoutAdmin() {
+    isAdminAuthenticated = false;
+    showMessage("Выход из админ-панели выполнен", "info");
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelector(".tab[data-tab='test']").classList.add("active");
+    renderTest();
+}
+
 // --- УПРАВЛЕНИЕ ДИСКЛЕЙМЕРОМ ---
 function showDisclaimer() {
     const username = document.getElementById("username").value.trim();
@@ -37,8 +64,6 @@ function showDisclaimer() {
     
     const modal = document.getElementById("disclaimerModal");
     modal.style.display = "flex";
-    
-    // Добавляем обработчики для кнопок дисклеймера
     document.getElementById("closeDisclaimerBtn").onclick = closeDisclaimer;
     document.getElementById("confirmStartBtn").onclick = confirmStartTest;
 }
@@ -51,8 +76,6 @@ function closeDisclaimer() {
 function confirmStartTest() {
     const modal = document.getElementById("disclaimerModal");
     modal.style.display = "none";
-    
-    // Запускаем тест после подтверждения
     actuallyStartTest();
 }
 
@@ -67,7 +90,7 @@ function resetInactivityTimer() {
         inactivityTimer = setTimeout(() => {
             const timeSinceLastActivity = Date.now() - lastActivityTime;
             if (test && !test.blocked && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
-                showError("Тест заблокирован за бездействие! Возможно, вы использовали телефон для подсматривания ответов.");
+                showError("Тест заблокирован за бездействие!");
                 blockTest();
             }
         }, INACTIVITY_TIMEOUT);
@@ -79,7 +102,6 @@ function trackActivity() {
 }
 
 function showInactivityWarning() {
-    // Показываем предупреждение за 5 секунд до блокировки
     const timeLeft = INACTIVITY_TIMEOUT - (Date.now() - lastActivityTime);
     if (timeLeft <= 5000 && !document.getElementById('inactivityWarning')) {
         const warning = document.createElement('div');
@@ -130,7 +152,7 @@ function arrayBufferToBase64(buffer) {
     return btoa(binary);
 }
 
-// --- СОХРАНЕНИЕ И ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ---
+// --- СОХРАНЕНИЕ СОСТОЯНИЯ ---
 function saveTestState() {
     if (test) {
         localStorage.setItem('currentTest', JSON.stringify({
@@ -183,31 +205,23 @@ function blockTest() {
     blocked = true;
     test.blocked = true;
 
-    // Блокируем элементы интерфейса
     document.querySelectorAll("input, button").forEach(el => {
         if (!el.id.includes("unlock") && el.id !== "username" && !el.closest(".tabs")) {
             el.disabled = true;
         }
     });
 
-    // Останавливаем таймер бездействия
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
         inactivityTimer = null;
     }
 
-    // Генерация кода разблокировки
     if (!test.unlockCode) {
         test.unlockCode = generateReadableCode();
     }
 
-    // Создаем файл с кодом разблокировки
     createUnlockFile();
-
-    // Сохраняем состояние
     saveTestState();
-
-    // Показываем сообщение о блокировке
     renderBlockedScreen();
 }
 
@@ -217,12 +231,11 @@ function createUnlockFile() {
 Имя пользователя: ${test.username}
 Код разблокировки: ${test.unlockCode}
 
-Причина блокировки: Бездействие (отсутствие активности более 20 секунд)
+Причина блокировки: Бездействие
 Тест заблокирован: ${new Date().toLocaleString('ru-RU')}
 Прогресс: ${test.current + 1}/${TEST_COUNT} вопросов
 
 Для разблокировки теста обратитесь к администратору.
-Сообщите администратору этот код.
 
 Arizona RP | Военная Полиция`;
 
@@ -239,10 +252,8 @@ function renderBlockedScreen() {
         <div class="blocked-note">
             <h2>🚫 Тест заблокирован за бездействие!</h2>
             <p>Система зафиксировала отсутствие активности более 20 секунд.</p>
-            <p><strong>Возможная причина: использование телефона для подсматривания ответов</strong></p>
             <p>Файл с кодом разблокировки был скачан.</p>
             <p>Отправьте файл <strong>${test.username}_код_разблокировки.docx</strong> администратору.</p>
-            <p>Администратор предоставит вам код для разблокировки теста.</p>
             
             <div style="margin: 20px 0;">
                 <button class="btn ghost" id="resendCodeBtn">
@@ -300,10 +311,8 @@ function unblockTest() {
 
 // --- УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ ---
 function initUI() {
-    // Загружаем состояние теста при запуске
     loadTestState();
     
-    // Слушатели активности (только мышь и клавиатура)
     document.addEventListener('mousemove', trackActivity);
     document.addEventListener('mousedown', trackActivity);
     document.addEventListener('keypress', trackActivity);
@@ -317,9 +326,7 @@ function initUI() {
             tab.classList.add("active");
             
             if (tabName === "admin") {
-                const pwd = prompt("Введите пароль для Админки:");
-                if (pwd !== ADMIN_PASSWORD) {
-                    alert("Неверный пароль!");
+                if (!authenticateAdmin()) {
                     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
                     document.querySelector(".tab[data-tab='test']").classList.add("active");
                     renderTest();
@@ -330,7 +337,6 @@ function initUI() {
         });
     });
 
-    // Обновляем обработчик - теперь показываем дисклеймер
     document.getElementById("startBtn").addEventListener("click", showDisclaimer);
     document.getElementById("unlockBtn").addEventListener("click", unblockTest);
 
@@ -348,10 +354,8 @@ function initUI() {
         }
     });
 
-    // Скрываем кнопку разблокировки по умолчанию
     document.getElementById("unlockBtn").style.display = "none";
 
-    // Запускаем проверку бездействия каждую секунду
     setInterval(() => {
         if (test && !test.blocked) {
             const timeSinceLastActivity = Date.now() - lastActivityTime;
@@ -376,7 +380,6 @@ function showMessage(message, type = "info") {
         color: white;
         font-weight: bold;
         z-index: 10001;
-        animation: slideIn 0.3s ease;
         max-width: 300px;
     `;
     
@@ -400,7 +403,7 @@ function showError(message) {
     showMessage(message, "error");
 }
 
-// --- ОБНОВЛЕННЫЙ СТАРТ ТЕСТА ---
+// --- СТАРТ ТЕСТА ---
 function actuallyStartTest() {
     const username = document.getElementById("username").value.trim();
     if (!username) {
@@ -418,13 +421,9 @@ function actuallyStartTest() {
         blocked: false
     };
     
-    // Сохраняем состояние
     saveTestState();
-    
-    // Показываем кнопку разблокировки
     document.getElementById("unlockBtn").style.display = "inline-block";
-    
-    showMessage("Тест начат! Не покидайте вкладку и будьте активны (двигайте мышкой/печатайте).", "success");
+    showMessage("Тест начат! Не покидайте вкладку.", "success");
     resetInactivityTimer();
     renderTest();
 }
@@ -438,8 +437,7 @@ function renderTest() {
             <div class="question-box">
                 <h2>Добро пожаловать в тест Военной Полиции</h2>
                 <p>Введите ваше имя в поле ниже и нажмите "Начать тест" для начала тестирования.</p>
-                <p><strong>Важно:</strong> Система отслеживает активность! Двигайте мышкой или печатайте каждые 20 секунд.</p>
-                <p style="color: var(--warning);"><strong>⚠️ Использование телефона для подсматривания ответов приведет к блокировке теста!</strong></p>
+                <p><strong>Важно:</strong> Система отслеживает активность!</p>
             </div>
         `;
         return;
@@ -463,7 +461,7 @@ function renderTest() {
                 </button>
             </div>
             <div class="small" style="margin-top: 15px; color: var(--warning);">
-                ⚠️ Система отслеживает активность! Двигайте мышкой или печатайте для предотвращения блокировки.
+                ⚠️ Система отслеживает активность!
             </div>
         </div>
     `;
@@ -532,7 +530,6 @@ function finishTest() {
 Arizona RP | Военная Полиция
 Тест завершен`;
 
-    // Сохраняем результаты в зашифрованном DOCX
     const encrypted = CryptoJS.AES.encrypt(reportText, AES_KEY).toString();
     const blob = new Blob([btoa(encrypted)], { 
         type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
@@ -540,16 +537,12 @@ Arizona RP | Военная Полиция
     
     saveAs(blob, `${test.username}_тест_результаты.docx`);
 
-    // Останавливаем таймер бездействия
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
         inactivityTimer = null;
     }
 
-    // Очищаем состояние после завершения теста
     clearTestState();
-
-    // Скрываем кнопку разблокировки
     document.getElementById("unlockBtn").style.display = "none";
 
     document.getElementById("mainArea").innerHTML = `
@@ -557,7 +550,7 @@ Arizona RP | Военная Полиция
             <h2>✅ Тест завершён!</h2>
             <p><strong>${escapeHtml(test.username)}</strong>, ваш тест успешно завершён.</p>
             <p>Файл с результатами был автоматически скачан.</p>
-            <p>Отправьте файл <strong>${test.username}_тест_результаты.docx</strong> администратору для проверки.</p>
+            <p>Отправьте файл <strong>${test.username}_тест_результаты.docx</strong> администратору.</p>
             <div style="margin-top: 20px;">
                 <button class="btn" id="restartBtn">Пройти тест снова</button>
             </div>
@@ -594,7 +587,6 @@ function renderAdmin() {
                 
                 <div id="fileViewer" class="report" style="display: none; margin-top: 20px;"></div>
                 
-                <!-- Панель оценки -->
                 <div id="gradingPanel" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
                     <h4>📝 Оценка ответов</h4>
                     <div id="gradingStats" class="grading-stats"></div>
@@ -633,10 +625,8 @@ function renderAdmin() {
             reader.onload = (evt) => {
                 const base64 = arrayBufferToBase64(evt.target.result);
                 
-                // Проверяем, не загружен ли уже этот файл
                 const existingFileIndex = savedFiles.findIndex(f => f.name === file.name);
                 if (existingFileIndex !== -1) {
-                    // Обновляем существующий файл
                     savedFiles[existingFileIndex] = {
                         ...savedFiles[existingFileIndex],
                         content: base64,
@@ -645,7 +635,6 @@ function renderAdmin() {
                     };
                     showMessage(`Файл "${file.name}" обновлен!`, "success");
                 } else {
-                    // Добавляем новый файл
                     savedFiles.push({
                         name: file.name,
                         size: file.size,
@@ -708,10 +697,6 @@ function renderAdmin() {
                 const index = parseInt(e.target.dataset.index);
                 savedFiles[index].passed = e.target.checked;
                 localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
-                
-                if (e.target.checked) {
-                    showMessage(`Тест "${savedFiles[index].name}" отмечен как пройденный`, "success");
-                }
             });
         });
 
@@ -735,25 +720,17 @@ function renderAdmin() {
 
                     let contentHTML = '';
                     if (decryptedPlain && decryptedPlain.length > 0) {
-                        // Если есть данные оценки, добавляем их к просмотру
                         let reportWithGrading = decryptedPlain;
                         if (file.graded) {
                             reportWithGrading += `\n\n=== ОЦЕНКА АДМИНИСТРАТОРА ===\n`;
                             reportWithGrading += `Оценка: ${file.score}%\n`;
                             reportWithGrading += `Правильных ответов: ${file.correctAnswers}/${file.totalAnswers}\n`;
                             reportWithGrading += `Статус: ${file.passed ? '✅ ПРОЙДЕН' : '❌ НЕ ПРОЙДЕН'}\n`;
-                            
-                            if (file.gradingData) {
-                                reportWithGrading += `\nДетальная оценка:\n`;
-                                file.gradingData.forEach((item, idx) => {
-                                    reportWithGrading += `\n${idx + 1}. ${item.correct ? '✅ ПРАВИЛЬНО' : '❌ НЕПРАВИЛЬНО'}\n`;
-                                });
-                            }
                         }
                         
                         contentHTML = `<pre>${escapeHtml(reportWithGrading)}</pre>`;
                     } else {
-                        contentHTML = `<pre style="color: var(--error);">Не удалось расшифровать файл. Возможно, это не зашифрованный документ теста.</pre>`;
+                        contentHTML = `<pre style="color: var(--error);">Не удалось расшифровать файл.</pre>`;
                     }
 
                     fileViewer.innerHTML = `
@@ -769,7 +746,7 @@ function renderAdmin() {
                     });
                     
                 } catch (error) {
-                    fileViewer.innerHTML = `<div style="color: var(--error);">Ошибка при чтении файла: ${error.message}</div>`;
+                    fileViewer.innerHTML = `<div style="color: var(--error);">Ошибка при чтении файла</div>`;
                 }
             });
         });
@@ -819,7 +796,6 @@ function renderAdmin() {
             }
 
             if (decryptedPlain) {
-                // Используем существующие данные оценки или парсим заново
                 let answers = fileData.gradingData || parseAnswersFromReport(decryptedPlain);
                 const correctCount = answers.filter(a => a.correct).length;
                 const totalCount = answers.length;
@@ -841,13 +817,11 @@ function renderAdmin() {
                     </div>
                 `).join('');
 
-                // Обновляем галочки в реальном времени
                 document.querySelectorAll('.correct-checkbox').forEach(cb => {
                     cb.addEventListener('change', (e) => {
                         const index = parseInt(e.target.dataset.index);
                         answers[index].correct = e.target.checked;
                         
-                        // Обновляем статистику
                         const newCorrectCount = answers.filter(a => a.correct).length;
                         const newScore = Math.round((newCorrectCount / totalCount) * 100);
                         gradingStats.innerHTML = `
@@ -855,7 +829,6 @@ function renderAdmin() {
                             ${fileData.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
                         `;
                         
-                        // Обновляем стиль ответа
                         const answerItem = e.target.closest('.answer-item');
                         if (e.target.checked) {
                             answerItem.classList.add('correct');
@@ -878,7 +851,7 @@ function renderAdmin() {
                 gradingPanel.style.display = 'block';
             }
         } catch (error) {
-            showError("Ошибка при загрузке ответов для оценки: " + error.message);
+            showError("Ошибка при загрузке ответов для оценки");
         }
     }
 
@@ -922,7 +895,6 @@ function renderAdmin() {
         const totalCount = gradedAnswers.length;
         const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
         
-        // Сохраняем оценку в данных файла
         savedFiles[fileIndex] = {
             ...savedFiles[fileIndex],
             graded: true,
@@ -930,14 +902,11 @@ function renderAdmin() {
             correctAnswers: correctCount,
             totalAnswers: totalCount,
             gradingData: gradedAnswers,
-            passed: score >= 70 // Автоматически отмечаем как пройденный если оценка >= 70%
+            passed: score >= 70
         };
         
         localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
-        
         showMessage(`Оценка сохранена! Результат: ${score}%`, "success");
-        
-        // Закрываем панель оценки и обновляем список
         gradingPanel.style.display = "none";
         renderFiles();
     }
@@ -970,22 +939,5 @@ function render(tab) {
     }
 }
 
-// CSS анимация для уведомлений
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-`;
-document.head.appendChild(style);
-
 // ЗАПУСК ПРИЛОЖЕНИЯ
 document.addEventListener('DOMContentLoaded', initUI);
-
