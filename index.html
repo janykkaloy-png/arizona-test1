@@ -59,7 +59,9 @@
         <header>
             <h1>Arizona RP — Тест Военной Полиции</h1>
             <div class="tabs">
-                <div class="tab active" data-tab="test">Тест</div>
+                <div class="tab active" data-tab="academy">Академия</div>
+                <div class="tab" data-tab="exam">Экзамен</div>
+                <div class="tab" data-tab="retraining">Переаттестация</div>
                 <div class="tab" data-tab="admin">Админ</div>
             </div>
         </header>
@@ -71,13 +73,20 @@
         <div class="card">
             <div class="small">Инструкция</div>
             <p class="small">
-                Введите имя и начните тест. Если вы покинете вкладку или будете бездействовать — тест будет заблокирован.
+                Введите имя или выберите из существующих и начните тест. Если вы покинете вкладку или будете бездействовать — тест будет заблокирован.
                 <br><em>Если вы проходите переаттестацию, напишите это рядом с ником: Ник на англ. - Переаттестация 1-3</em>
             </p>
 
-            <input type="text" id="username" placeholder="Ваше имя">
+            <div style="position: relative;">
+                <input type="text" id="username" placeholder="Введите ваш ник или выберите из списка" list="playersList">
+                <datalist id="playersList">
+                    <!-- Список игроков будет заполнен JavaScript -->
+                </datalist>
+            </div>
+            
             <button class="btn" id="startBtn">Начать тест</button>
-            <button class="btn ghost" id="unlockBtn" style="display: none;">Разблокировать</button>
+            <button class="btn ghost" id="finishBtn" style="display: none;">✅ Завершить тест</button>
+            <button class="btn ghost" id="unlockBtn" style="display: none;">🔓 Разблокировать</button>
         </div>
 
         <footer>
