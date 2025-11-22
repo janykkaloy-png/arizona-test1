@@ -1,6 +1,6 @@
 // === НАСТРОЙКИ ===
 const TEST_COUNT = 15;
-const ADMIN_PASSWORD = "TryToPassTheExam";
+const ADMIN_PASSWORD = "TryToPassTheExam2025kP9Lm2qR8xZ3ButIfYouLose5202tY6nB4vC7sW1BanForTheWholeLife2520";
 const AES_KEY = "my_secret_aes_key_2024";
 const INACTIVITY_TIMEOUT = 20000;
 
@@ -1909,3 +1909,4 @@ function render(tab) {
 
 // ЗАПУСК ПРИЛОЖЕНИЯ
 document.addEventListener('DOMContentLoaded', initUI);
+
