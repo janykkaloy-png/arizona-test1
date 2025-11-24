@@ -12,21 +12,21 @@ let currentTestType = 'academy'; // 'academy', 'exam', 'retraining'
 // База зарегистрированных игроков
 let playersDatabase = JSON.parse(localStorage.getItem('playersDatabase') || '[]');
 
-// Фиксированная структура сотрудников
+// Фиксированная структура сотрудников с реальными именами
 const FIXED_EMPLOYEE_STRUCTURE = [
-    { id: 'curator', position: 'Куратор', type: 'curator' },
-    { id: 'senior_officer_1', position: 'Старший офицер', type: 'senior_officer' },
-    { id: 'senior_officer_2', position: 'Старший офицер', type: 'senior_officer' },
-    { id: 'officer_1', position: 'Офицер', type: 'officer' },
-    { id: 'officer_2', position: 'Офицер', type: 'officer' },
-    { id: 'officer_3', position: 'Офицер', type: 'officer' },
-    { id: 'officer_4', position: 'Офицер', type: 'officer' },
-    { id: 'officer_5', position: 'Офицер', type: 'officer' },
-    { id: 'officer_6', position: 'Офицер', type: 'officer' },
-    { id: 'officer_7', position: 'Офицер', type: 'officer' },
-    { id: 'cadet_1', position: 'Курсант', type: 'cadet' },
-    { id: 'cadet_2', position: 'Курсант', type: 'cadet' },
-    { id: 'cadet_3', position: 'Курсант', type: 'cadet' }
+    { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Rin_Valhalla' },
+    { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Dexter_Valhalla' },
+    { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
+    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Chaffy_Washington' },
+    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Michael_Sector' },
+    { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Sairus_Ronda' },
+    { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
 const examQuestions = [
@@ -88,24 +88,39 @@ let blocked = false;
 let inactivityTimer = null;
 let lastActivityTime = Date.now();
 
+// Переменные для системы выбора сотрудника
+let currentGradingFile = null;
+let currentGradingAnswers = null;
+let currentFileIndex = null;
+
 // --- СИСТЕМА СОТРУДНИКОВ ---
 
 // Загрузка данных сотрудников
 function loadEmployeesData() {
     const saved = localStorage.getItem('fixedEmployees');
+    let employeesData;
+    
     if (saved) {
-        return JSON.parse(saved);
+        employeesData = JSON.parse(saved);
+        // Восстанавливаем фиксированных сотрудников из FIXED_EMPLOYEE_STRUCTURE
+        FIXED_EMPLOYEE_STRUCTURE.forEach(fixedEmp => {
+            if (fixedEmp.username !== 'Вакантно') {
+                if (employeesData[fixedEmp.id]) {
+                    employeesData[fixedEmp.id].username = fixedEmp.username;
+                }
+            }
+        });
     } else {
-        // Инициализация структуры с вакантными местами
-        const initialData = {};
+        // Инициализация структуры с фиксированными именами
+        employeesData = {};
         FIXED_EMPLOYEE_STRUCTURE.forEach(emp => {
-            initialData[emp.id] = {
+            employeesData[emp.id] = {
                 ...emp,
-                username: 'Вакантно',
+                username: emp.username,
                 folders: {
-                    academy: `${emp.position}_Академия`,
-                    exam: `${emp.position}_Экзамен`,
-                    retraining: `${emp.position}_Переаттестация`
+                    academy: `${emp.username !== 'Вакантно' ? emp.username : emp.position}_Академия`,
+                    exam: `${emp.username !== 'Вакантно' ? emp.username : emp.position}_Экзамен`,
+                    retraining: `${emp.username !== 'Вакантно' ? emp.username : emp.position}_Переаттестация`
                 },
                 files: {
                     academy: [],
@@ -114,8 +129,10 @@ function loadEmployeesData() {
                 }
             };
         });
-        return initialData;
     }
+    
+    saveEmployeesData(employeesData);
+    return employeesData;
 }
 
 // Сохранение данных сотрудников
@@ -231,15 +248,7 @@ function addFileToEmployeeFolder(username, folderType, fileName, content) {
     
     if (!employee) {
         console.error(`Сотрудник с именем ${username} не найден`);
-        // Создаем временную запись если сотрудник не назначен
-        const vacantEmployee = Object.values(employeesData).find(emp => 
-            emp.username.toLowerCase() === username.toLowerCase()
-        );
-        if (!vacantEmployee) {
-            console.error(`Не найдена должность для сотрудника ${username}`);
-            return false;
-        }
-        employee = vacantEmployee;
+        return false;
     }
 
     const file = {
@@ -264,6 +273,58 @@ function addFileToEmployeeFolder(username, folderType, fileName, content) {
     
     console.log(`Файл ${fileName} сохранен в папку ${folderType} сотрудника ${username}`);
     return true;
+}
+
+// Функция для загрузки файла в папку сотрудника
+function uploadFileToEmployeeFolder(file, employeeId, folderType, modal) {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        const content = e.target.result;
+        const fileName = file.name;
+        
+        // Сохраняем файл в папку сотрудника
+        const employeesData = loadEmployeesData();
+        const employee = employeesData[employeeId];
+        
+        if (!employee) {
+            showError('Сотрудник не найден!');
+            return;
+        }
+        
+        const newFile = {
+            id: Date.now().toString(),
+            name: fileName,
+            content: typeof content === 'string' ? content : new TextDecoder().decode(content),
+            date: new Date().toLocaleString('ru-RU'),
+            type: 'uploaded',
+            graded: false,
+            score: 0,
+            isUnlockFile: false,
+            isGraded: false,
+            isNew: true
+        };
+        
+        if (!employee.files[folderType]) {
+            employee.files[folderType] = [];
+        }
+        
+        employee.files[folderType].push(newFile);
+        saveEmployeesData(employeesData);
+        
+        showMessage(`Файл "${fileName}" успешно загружен в папку!`, 'success');
+        
+        // Закрываем модальное окно и обновляем интерфейс
+        modal.remove();
+        renderAdmin();
+    };
+    
+    reader.onerror = () => {
+        showError('Ошибка при чтении файла');
+    };
+    
+    // Читаем файл как текст
+    reader.readAsText(file);
 }
 
 // --- СИСТЕМА РЕГИСТРАЦИИ ИГРОКОВ ---
@@ -386,17 +447,27 @@ function resetInactivityTimer() {
     }
     
     if (test && !test.blocked) {
+        // Добавляем буфер в 10 секунд при старте теста
+        const bufferTime = test.current === 0 ? 10000 : 0;
+        
         inactivityTimer = setTimeout(() => {
             const timeSinceLastActivity = Date.now() - lastActivityTime;
             if (test && !test.blocked && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+                console.log(`Блокировка: бездействие ${timeSinceLastActivity}ms`);
                 showError("Тест заблокирован за бездействие!");
                 blockTest();
             }
-        }, INACTIVITY_TIMEOUT);
+        }, INACTIVITY_TIMEOUT + bufferTime);
     }
 }
 
 function trackActivity() {
+    // Не сбрасываем таймер слишком часто (раз в 2 секунды минимум)
+    const now = Date.now();
+    if (now - lastActivityTime < 2000) {
+        return;
+    }
+    
     resetInactivityTimer();
 }
 
@@ -639,6 +710,12 @@ function unblockTest() {
 
 // --- УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ ---
 function initUI() {
+    // Очистка старых таймеров при загрузке
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+    }
+    
     loadTestState();
     updatePlayersDatalist();
     
@@ -795,6 +872,12 @@ function actuallyStartTest() {
         return;
     }
     
+    // Очистка предыдущего таймера
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+    }
+    
     const questions = getQuestionsByType(currentTestType);
     const shuffledQuestions = shuffleArray([...questions]).slice(0, TEST_COUNT);
     const player = getCurrentPlayer();
@@ -814,7 +897,12 @@ function actuallyStartTest() {
     document.getElementById("unlockBtn").style.display = "inline-block";
     document.getElementById("finishBtn").style.display = "inline-block";
     showMessage("Тест начат! Не покидайте вкладку.", "success");
-    resetInactivityTimer();
+    
+    // Запускаем таймер с небольшой задержкой
+    setTimeout(() => {
+        resetInactivityTimer();
+    }, 1000);
+    
     renderCurrentTest();
 }
 
@@ -1097,7 +1185,7 @@ function saveTestToPlayerFolder(testData, timeSpent) {
                 tests: {
                     ...p.tests,
                     [testData.testType]: [...p.tests[testData.testType], testResult]
-                }
+            }
             };
         }
         return p;
@@ -1127,6 +1215,218 @@ function saveTestResultForStatistics(testData, timeSpent) {
     const pendingResults = JSON.parse(localStorage.getItem('pendingTestResults') || '[]');
     pendingResults.push(testResult);
     localStorage.setItem('pendingTestResults', JSON.stringify(pendingResults));
+}
+
+// --- НОВАЯ СИСТЕМА: ВЫБОР СОТРУДНИКА ПРИ СОХРАНЕНИИ ---
+
+// Функция для поиска возможных сотрудников по имени
+function findPossibleEmployees(username) {
+    const employeesData = loadEmployeesData();
+    const cleanUsername = username.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    return Object.values(employeesData)
+        .filter(emp => emp.username !== 'Вакантно')
+        .map(emp => {
+            const cleanEmpName = emp.username.toLowerCase().replace(/[^a-z0-9]/g, '');
+            let score = 0;
+            
+            // Оценка схожести
+            if (cleanEmpName === cleanUsername) score = 100; // Точное совпадение
+            else if (cleanEmpName.includes(cleanUsername)) score = 80; // Частичное совпадение
+            else if (cleanUsername.includes(cleanEmpName)) score = 70; // Обратное частичное совпадение
+            else if (cleanEmpName.startsWith(cleanUsername)) score = 60; // Начинается с
+            else if (cleanUsername.startsWith(cleanEmpName)) score = 50; // Обратное начинается с
+            
+            return {
+                ...emp,
+                matchScore: score
+            };
+        })
+        .filter(emp => emp.matchScore > 0)
+        .sort((a, b) => b.matchScore - a.matchScore);
+}
+
+// Функция для показа модального окна выбора сотрудника
+function showEmployeeSelectionModal(filename, username, testType, gradedFile, gradedAnswers, fileIndex) {
+    const possibleEmployees = findPossibleEmployees(username);
+    
+    if (possibleEmployees.length === 0) {
+        showError(`Не найдено сотрудников для имени "${username}". Файл не будет сохранен.`);
+        return;
+    }
+    
+    // Если только один вариант - сохраняем автоматически
+    if (possibleEmployees.length === 1) {
+        const employee = possibleEmployees[0];
+        saveGradedResultsToEmployee(employee, gradedFile, gradedAnswers, fileIndex);
+        return;
+    }
+    
+    // Показываем модальное окно выбора
+    const modal = document.getElementById('employeeSelectionModal');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const employeeList = document.getElementById('employeeSelectionList');
+    const confirmBtn = document.getElementById('confirmEmployeeSelection');
+    
+    // Сохраняем данные для использования после выбора
+    currentGradingFile = gradedFile;
+    currentGradingAnswers = gradedAnswers;
+    currentFileIndex = fileIndex;
+    
+    fileNameDisplay.textContent = filename;
+    
+    // Очищаем список
+    employeeList.innerHTML = '';
+    
+    // Заполняем список сотрудников
+    possibleEmployees.forEach((employee, index) => {
+        const employeeOption = document.createElement('div');
+        employeeOption.className = 'employee-option';
+        employeeOption.innerHTML = `
+            <input type="radio" name="employeeSelect" id="employee_${index}" value="${employee.id}">
+            <div class="employee-info">
+                <div class="employee-name">${escapeHtml(employee.username)}</div>
+                <div class="employee-position">${employee.position}</div>
+                <div class="employee-stats">
+                    <span>📁 Академия: ${employee.files.academy.length}</span>
+                    <span>🎓 Экзамен: ${employee.files.exam.length}</span>
+                    <span>🔄 Переатт.: ${employee.files.retraining.length}</span>
+                </div>
+            </div>
+        `;
+        
+        employeeOption.querySelector('input').addEventListener('change', (e) => {
+            // Обновляем выбранного сотрудника
+            document.querySelectorAll('.employee-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            employeeOption.classList.add('selected');
+            confirmBtn.disabled = false;
+        });
+        
+        employeeList.appendChild(employeeOption);
+    });
+    
+    // Обработчики кнопок
+    document.getElementById('cancelEmployeeSelection').onclick = () => {
+        modal.style.display = 'none';
+        showMessage('Сохранение отменено', 'info');
+    };
+    
+    confirmBtn.onclick = () => {
+        const selectedInput = document.querySelector('input[name="employeeSelect"]:checked');
+        if (selectedInput) {
+            const employeeId = selectedInput.value;
+            const employeesData = loadEmployeesData();
+            const selectedEmployee = employeesData[employeeId];
+            
+            if (selectedEmployee) {
+                saveGradedResultsToEmployee(selectedEmployee, currentGradingFile, currentGradingAnswers, currentFileIndex);
+                modal.style.display = 'none';
+            }
+        }
+    };
+    
+    // Сбрасываем состояние
+    confirmBtn.disabled = true;
+    document.querySelectorAll('.employee-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    
+    // Показываем модальное окно
+    modal.style.display = 'flex';
+}
+
+// Функция сохранения результатов выбранному сотруднику
+function saveGradedResultsToEmployee(employee, gradedFile, gradedAnswers, fileIndex) {
+    const username = employee.username;
+    const testType = gradedFile.testType;
+    const score = gradedFile.score;
+    const timeSpent = gradedFile.timeSpent;
+    const correctAnswers = gradedFile.correctAnswers;
+    const totalAnswers = gradedFile.totalAnswers;
+    const passed = gradedFile.passed;
+    
+    // Создаем новый отчет с оценкой
+    const testTypeName = getTestTypeName(testType);
+    
+    let reportText = `${testTypeName.toUpperCase()} ВОЕННОЙ ПОЛИЦИИ - РЕЗУЛЬТАТЫ С ОЦЕНКОЙ
+=================================
+
+Общая информация:
+----------------
+Имя: ${username}
+Тип теста: ${testTypeName}
+Дата оценки: ${new Date().toLocaleString('ru-RU')}
+Время выполнения: ${timeSpent} минут
+Всего вопросов: ${totalAnswers}
+Правильных ответов: ${correctAnswers}
+Оценка: ${score}%
+Статус: ${passed ? '✅ ПРОЙДЕН' : '❌ НЕ ПРОЙДЕН'}
+
+Ответы с оценкой:
+----------------
+`;
+
+    gradedAnswers.forEach((answer, index) => {
+        reportText += `\n${index + 1}. ${answer.question}\n`;
+        reportText += `Ответ: ${answer.answer}\n`;
+        reportText += `Оценка: ${answer.correct ? '✅ Правильно' : '❌ Неправильно'}\n`;
+        reportText += `---------------------------------\n`;
+    });
+
+    reportText += `\n
+=================================
+Arizona RP | Военная Полиция
+Тест оценен администратором`;
+
+    const fileName = `${username}_${testTypeName}_${timeSpent}мин_оценка_${score}%.docx`;
+    
+    // Сохраняем в папку сотрудника
+    const success = addFileToEmployeeFolder(
+        username,
+        testType,
+        fileName,
+        reportText
+    );
+    
+    if (success) {
+        showMessage(`Оценка сохранена! Файл "${fileName}" сохранен в папку сотрудника ${username}`, "success");
+        
+        // Обновляем статистику
+        const savedFiles = JSON.parse(localStorage.getItem("adminFiles") || "[]");
+        savedFiles[fileIndex].username = username;
+        localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+        
+        const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
+        const filteredStatistics = statistics.filter(stat => 
+            !(stat.username === username && stat.testType === testType && Math.abs(new Date(stat.date) - new Date()) < 60000)
+        );
+        
+        filteredStatistics.push({
+            username: username,
+            testType: testType,
+            score: score,
+            timeSpent: timeSpent,
+            correctAnswers: correctAnswers,
+            totalAnswers: totalAnswers,
+            passed: passed,
+            date: new Date().toISOString(),
+            graded: true
+        });
+        
+        localStorage.setItem("testStatistics", JSON.stringify(filteredStatistics));
+        
+        // Закрываем панель оценки
+        const gradingPanel = document.getElementById("gradingPanel");
+        if (gradingPanel) {
+            gradingPanel.style.display = "none";
+        }
+        
+        renderFiles();
+    } else {
+        showError(`Не удалось сохранить файл в папку сотрудника ${username}`);
+    }
 }
 
 // --- АДМИН-ПАНЕЛЬ ---
@@ -1182,7 +1482,7 @@ function renderAdmin() {
                     ${renderFixedEmployees(employeesData)}
                     
                     <div style="margin-top: 15px; font-size: 0.9em; color: var(--text-muted);">
-                        💡 Для назначения сотрудника введите его ник в соответствующее поле и нажмите "Сохранить"
+                        💡 Фиксированные сотрудники не могут быть изменены. Редактирование доступно только для вакантных мест.
                     </div>
                 </div>
 
@@ -1367,6 +1667,9 @@ function renderFixedEmployees(employeesData) {
             ${FIXED_EMPLOYEE_STRUCTURE.map(empTemplate => {
                 const employee = employeesData[empTemplate.id];
                 const isVacant = employee.username === 'Вакантно';
+                const isFixedEmployee = FIXED_EMPLOYEE_STRUCTURE.find(fixed => 
+                    fixed.id === empTemplate.id && fixed.username !== 'Вакантно'
+                );
                 
                 let typeClass = '';
                 if (employee.type === 'curator' || employee.type === 'senior_officer') {
@@ -1390,20 +1693,24 @@ function renderFixedEmployees(employeesData) {
                         </div>
                         
                         <div class="employee-content">
-                            <input type="text" 
-                                   class="employee-username" 
-                                   value="${isVacant ? '' : employee.username}" 
-                                   placeholder="Введите ник сотрудника"
-                                   data-employee-id="${employee.id}">
-                            
-                            <div class="employee-actions">
-                                <button class="btn small save-employee-btn" data-employee-id="${employee.id}">
-                                    💾 Сохранить
-                                </button>
-                                <button class="btn small ghost clear-employee-btn" data-employee-id="${employee.id}">
-                                    🗑️ Очистить
-                                </button>
-                            </div>
+                            ${isFixedEmployee && !isVacant ? `
+                            ` : `
+                                <!-- Для вакантных мест - поля редактирования -->
+                                <input type="text" 
+                                       class="employee-username" 
+                                       value="" 
+                                       placeholder="Введите ник сотрудника"
+                                       data-employee-id="${employee.id}">
+                                
+                                <div class="employee-actions">
+                                    <button class="btn small save-employee-btn" data-employee-id="${employee.id}">
+                                        💾 Сохранить
+                                    </button>
+                                    <button class="btn small ghost clear-employee-btn" data-employee-id="${employee.id}" ${isVacant ? 'style="display: none;"' : ''}>
+                                        🗑️ Очистить
+                                    </button>
+                                </div>
+                            `}
                             
                             ${!isVacant ? `
                                 <div class="employee-folders">
@@ -1461,23 +1768,27 @@ function renderFixedEmployees(employeesData) {
 
 // Инициализация управления сотрудниками
 function initEmployeesManagement() {
-    // Сохранение сотрудника
+    // Сохранение сотрудника - только для вакантных мест
     document.querySelectorAll('.save-employee-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const employeeId = e.target.dataset.employeeId;
             const input = document.querySelector(`.employee-username[data-employee-id="${employeeId}"]`);
-            const username = input.value.trim();
             
-            if (!username) {
-                showError('Введите ник сотрудника!');
-                return;
+            // Проверяем, что это поле ввода существует (только у вакантных мест)
+            if (input) {
+                const username = input.value.trim();
+                
+                if (!username) {
+                    showError('Введите ник сотрудника!');
+                    return;
+                }
+                
+                saveEmployee(employeeId, username);
             }
-            
-            saveEmployee(employeeId, username);
         });
     });
     
-    // Очистка сотрудника
+    // Очистка сотрудника - только для нефиксированных
     document.querySelectorAll('.clear-employee-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const employeeId = e.target.dataset.employeeId;
@@ -1485,7 +1796,7 @@ function initEmployeesManagement() {
         });
     });
     
-    // Сохранение по Enter
+    // Сохранение по Enter - только для вакантных мест
     document.querySelectorAll('.employee-username').forEach(input => {
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -1499,8 +1810,8 @@ function initEmployeesManagement() {
         });
     });
     
-    // Обработчики для папок
-    document.querySelectorAll('.folder-card.has-files, .folder-card.has-unlock, .folder-card.has-new, .folder-card.has-pending, .folder-card.has-graded').forEach(folder => {
+    // Обработчики для папок - ВСЕ папки, включая пустые
+    document.querySelectorAll('.folder-card').forEach(folder => {
         folder.addEventListener('click', (e) => {
             const employeeId = e.currentTarget.dataset.employeeId;
             const folderType = e.currentTarget.dataset.folderType;
@@ -1513,6 +1824,16 @@ function initEmployeesManagement() {
 function saveEmployee(employeeId, username) {
     const employeesData = loadEmployeesData();
     const employee = employeesData[employeeId];
+    
+    // Проверка на фиксированного сотрудника
+    const fixedEmployee = FIXED_EMPLOYEE_STRUCTURE.find(emp => 
+        emp.id === employeeId && emp.username !== 'Вакантно'
+    );
+    
+    if (fixedEmployee && fixedEmployee.username !== 'Вакантно') {
+        showError(`Сотрудник "${fixedEmployee.username}" является фиксированным и не может быть изменен!`);
+        return;
+    }
     
     // Проверка на уникальность
     const existingEmployee = getEmployeeByUsername(username, employeesData);
@@ -1541,6 +1862,16 @@ function clearEmployee(employeeId) {
     const employeesData = loadEmployeesData();
     const employee = employeesData[employeeId];
     const oldUsername = employee.username;
+    
+    // Проверка на фиксированного сотрудника
+    const fixedEmployee = FIXED_EMPLOYEE_STRUCTURE.find(emp => 
+        emp.id === employeeId && emp.username !== 'Вакантно'
+    );
+    
+    if (fixedEmployee && fixedEmployee.username !== 'Вакантно') {
+        showError(`Сотрудник "${fixedEmployee.username}" является фиксированным и не может быть удален!`);
+        return;
+    }
     
     if (oldUsername === 'Вакантно') {
         showError('Эта должность уже свободна!');
@@ -1590,6 +1921,19 @@ function openFolderModal(employeeId, folderType) {
             <h2>📁 ${employee.username} - ${folderNames[folderType]}</h2>
             <div class="small" style="margin-bottom: 15px; color: var(--text-muted);">
                 📝 Файлы появляются здесь после оценки администратором или блокировки теста
+            </div>
+            
+            <!-- КНОПКА ЗАГРУЗКИ ФАЙЛА -->
+            <div style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                <h4 style="margin-top: 0; color: var(--accent);">📤 Загрузить файл в папку</h4>
+                <input type="file" id="folderFileInput" accept=".docx,.txt,.pdf" style="display: none;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn small" id="chooseFolderFileBtn">📁 Выбрать файл</button>
+                    <span id="selectedFileName" style="color: var(--text-muted); font-size: 0.9em;">Файл не выбран</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button class="btn small" id="uploadToFolderBtn" disabled>⬆️ Загрузить в папку</button>
+                </div>
             </div>
             
             <div class="files-list">
@@ -1668,8 +2012,8 @@ function openFolderModal(employeeId, folderType) {
                 
                 ${files.length === 0 ? `
                     <div class="no-files-message">
-                        <p>В папке пока нет файлов</p>
-                        <p class="small">Файлы появятся после оценки тестов администратором или блокировки теста</p>
+                        <p>📁 В папке пока нет файлов</p>
+                        <p class="small">Вы можете загрузить файлы с помощью формы выше</p>
                     </div>
                 ` : ''}
             </div>
@@ -1685,6 +2029,32 @@ function openFolderModal(employeeId, folderType) {
     // Обработчики для модального окна
     document.getElementById('closeFolderModal').addEventListener('click', () => {
         modal.remove();
+    });
+    
+    // Обработчики для загрузки файлов в папку
+    const folderFileInput = document.getElementById('folderFileInput');
+    const chooseFolderFileBtn = document.getElementById('chooseFolderFileBtn');
+    const uploadToFolderBtn = document.getElementById('uploadToFolderBtn');
+    const selectedFileName = document.getElementById('selectedFileName');
+    
+    chooseFolderFileBtn.addEventListener('click', () => folderFileInput.click());
+    
+    folderFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            const file = e.target.files[0];
+            selectedFileName.textContent = file.name;
+            uploadToFolderBtn.disabled = false;
+        } else {
+            selectedFileName.textContent = 'Файл не выбран';
+            uploadToFolderBtn.disabled = true;
+        }
+    });
+    
+    uploadToFolderBtn.addEventListener('click', () => {
+        const file = folderFileInput.files[0];
+        if (!file) return;
+        
+        uploadFileToEmployeeFolder(file, employeeId, folderType, modal);
     });
     
     // Скачивание файлов
@@ -1996,7 +2366,16 @@ function openGradingPanel(file, fileIndex) {
             
             if (saveGradingBtn) {
                 saveGradingBtn.onclick = () => {
-                    saveGradedResults(file, answers, fileIndex);
+                    // Вместо прямого сохранения, показываем выбор сотрудника
+                    const username = extractUsernameFromFilename(file.name);
+                    const testType = extractTestTypeFromFilename(file.name);
+                    
+                    if (!username) {
+                        showError("Не удалось определить имя пользователя из названия файла!");
+                        return;
+                    }
+                    
+                    showEmployeeSelectionModal(file.name, username, testType, file, answers, fileIndex);
                 };
             }
             
@@ -2046,131 +2425,6 @@ function parseAnswersFromReport(reportText) {
     }
 
     return answers;
-}
-
-function saveGradedResults(originalFile, gradedAnswers, fileIndex) {
-    const correctCount = gradedAnswers.filter(a => a.correct).length;
-    const totalCount = gradedAnswers.length;
-    const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-    
-    const timeMatch = originalFile.name.match(/(\d+)мин/);
-    const timeSpent = timeMatch ? parseInt(timeMatch[1]) : 15;
-    
-    // Извлекаем имя и тип теста из названия файла
-    const username = extractUsernameFromFilename(originalFile.name);
-    const testType = extractTestTypeFromFilename(originalFile.name);
-    
-    if (!username) {
-        showError("Не удалось определить имя пользователя из названия файла!");
-        return;
-    }
-    
-    const savedFiles = JSON.parse(localStorage.getItem("adminFiles") || "[]");
-    
-    savedFiles[fileIndex] = {
-        ...savedFiles[fileIndex],
-        graded: true,
-        score: score,
-        correctAnswers: correctCount,
-        totalAnswers: totalCount,
-        gradingData: gradedAnswers,
-        passed: score >= 70,
-        username: username,
-        testType: testType,
-        timeSpent: timeSpent,
-        gradedDate: new Date().toLocaleString('ru-RU')
-    };
-    
-    // Сохраняем в статистику
-    const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
-    const filteredStatistics = statistics.filter(stat => 
-        !(stat.username === username && stat.testType === testType && Math.abs(new Date(stat.date) - new Date()) < 60000)
-    );
-    
-    filteredStatistics.push({
-        username: username,
-        testType: testType,
-        score: score,
-        timeSpent: timeSpent,
-        correctAnswers: correctCount,
-        totalAnswers: totalCount,
-        passed: score >= 70,
-        date: new Date().toISOString(),
-        graded: true
-    });
-    
-    localStorage.setItem("testStatistics", JSON.stringify(filteredStatistics));
-    localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
-    
-    // ✅ СОХРАНЯЕМ В ПАПКУ СОТРУДНИКА ТОЛЬКО ПОСЛЕ ОЦЕНКИ
-    saveToEmployeeFolderAfterGrading(savedFiles[fileIndex], gradedAnswers);
-    
-    showMessage(`Оценка сохранена! Результат: ${score}%. Файл сохранен в папку сотрудника.`, "success");
-    
-    const gradingPanel = document.getElementById("gradingPanel");
-    if (gradingPanel) {
-        gradingPanel.style.display = "none";
-    }
-    
-    renderFiles();
-}
-
-// Сохранение в папку сотрудника только после оценки
-function saveToEmployeeFolderAfterGrading(gradedFile, gradedAnswers) {
-    const username = gradedFile.username;
-    const testType = gradedFile.testType;
-    const score = gradedFile.score;
-    const timeSpent = gradedFile.timeSpent;
-    const correctAnswers = gradedFile.correctAnswers;
-    const totalAnswers = gradedFile.totalAnswers;
-    const passed = gradedFile.passed;
-    
-    // Создаем новый отчет с оценкой
-    const testTypeName = getTestTypeName(testType);
-    
-    let reportText = `${testTypeName.toUpperCase()} ВОЕННОЙ ПОЛИЦИИ - РЕЗУЛЬТАТЫ С ОЦЕНКОЙ
-=================================
-
-Общая информация:
-----------------
-Имя: ${username}
-Тип теста: ${testTypeName}
-Дата оценки: ${new Date().toLocaleString('ru-RU')}
-Время выполнения: ${timeSpent} минут
-Всего вопросов: ${totalAnswers}
-Правильных ответов: ${correctAnswers}
-Оценка: ${score}%
-Статус: ${passed ? '✅ ПРОЙДЕН' : '❌ НЕ ПРОЙДЕН'}
-
-Ответы с оценкой:
-----------------
-`;
-
-    gradedAnswers.forEach((answer, index) => {
-        reportText += `\n${index + 1}. ${answer.question}\n`;
-        reportText += `Ответ: ${answer.answer}\n`;
-        reportText += `Оценка: ${answer.correct ? '✅ Правильно' : '❌ Неправильно'}\n`;
-        reportText += `---------------------------------\n`;
-    });
-
-    reportText += `\n
-=================================
-Arizona RP | Военная Полиция
-Тест оценен администратором`;
-
-    const fileName = `${username}_${testTypeName}_${timeSpent}мин_оценка_${score}%.docx`;
-    
-    // Сохраняем в папку сотрудника
-    const success = addFileToEmployeeFolder(
-        username,
-        testType,
-        fileName,
-        reportText
-    );
-    
-    if (!success) {
-        showError(`Не удалось сохранить в папку сотрудника ${username}. Проверьте, существует ли такой сотрудник.`);
-    }
 }
 
 function deleteFile(index) {
