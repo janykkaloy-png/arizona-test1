@@ -282,6 +282,64 @@ input[type="text"]::placeholder {
     margin: 0;
 }
 
+/* Стили для выбора сотрудника */
+.employee-option {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin: 8px 0;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.employee-option:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.1);
+}
+
+.employee-option.selected {
+    background: rgba(14, 165, 164, 0.2);
+    border-color: var(--accent);
+}
+
+.employee-option input[type="radio"] {
+    margin-right: 12px;
+    transform: scale(1.2);
+}
+
+.employee-info {
+    flex: 1;
+}
+
+.employee-name {
+    font-weight: 700;
+    font-size: 1.1em;
+    margin-bottom: 4px;
+}
+
+.employee-position {
+    font-size: 0.9em;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.employee-stats {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    display: flex;
+    gap: 10px;
+}
+
+.employee-stats span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .correct-checkbox {
   width: 18px;
   height: 18px;
@@ -686,7 +744,6 @@ input[type="text"]::placeholder {
     font-size: 0.8em;
     color: var(--text-muted);
     flex-shrink: 0;
-    font-weight: 600;
 }
 
 .retraining-notice {
@@ -922,11 +979,30 @@ input[type="text"]::placeholder {
     opacity: 1;
 }
 
+/* Стили для пустых папок - теперь кликабельные */
 .folder-card.empty {
     background: linear-gradient(135deg, rgba(244, 67, 54, 0.1) 0%, rgba(244, 67, 54, 0.05) 100%);
     border-color: rgba(244, 67, 54, 0.3);
     color: #f44336;
-    cursor: not-allowed;
+    cursor: pointer !important;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.folder-card.empty:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.folder-card.empty::after {
+    content: '+';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2em;
+    opacity: 0.3;
 }
 
 .folder-card.has-files {
@@ -942,7 +1018,8 @@ input[type="text"]::placeholder {
 }
 
 .folder-card.has-files:hover,
-.folder-card.has-unlock:hover {
+.folder-card.has-unlock:hover,
+.folder-card.empty:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 20px rgba(0,0,0,0.2);
 }
@@ -1059,10 +1136,14 @@ input[type="text"]::placeholder {
     font-weight: 600;
 }
 
+/* Стили для модального окна папки с загрузкой файлов */
 .files-list {
-    max-height: 500px;
+    max-height: 400px;
     overflow-y: auto;
-    margin: 20px 0;
+    margin: 15px 0;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 10px;
 }
 
 .file-section {
@@ -1081,17 +1162,17 @@ input[type="text"]::placeholder {
     gap: 10px;
 }
 
+/* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ ФАЙЛОВ - КНОПКИ ВНИЗУ */
 .file-item {
     display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 15px;
+    grid-template-columns: 1fr;
+    gap: 10px;
     padding: 15px;
     background: rgba(255,255,255,0.05);
     border-radius: 10px;
     margin-bottom: 12px;
     border: 1px solid rgba(255,255,255,0.1);
     transition: all 0.2s ease;
-    align-items: center;
 }
 
 .file-item:hover {
@@ -1124,19 +1205,37 @@ input[type="text"]::placeholder {
     margin-top: 4px;
 }
 
+/* НОВЫЕ СТИЛИ ДЛЯ КНОПОК ВНИЗУ */
 .file-actions {
-    display: flex;
-    flex-direction: row; /* в один ряд */
-    gap: 5px; /* меньше расстояние */
-    align-items: center;
-    min-width: auto; /* убрать фиксированную ширину */
-    width: auto; /* авто ширина */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+    margin-top: 10px;
 }
 
 .file-actions .btn.small {
-    padding: 4px 8px; /* меньше кнопки */
-    font-size: 0.7em; /* меньше текст */
-    min-width: 60px; /* уже кнопки */
+    padding: 10px 8px;
+    font-size: 0.8em;
+    min-width: auto;
+    width: 100%;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+}
+
+/* Специфические стили для кнопок в модальном окне папки */
+.files-list .file-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.files-list .file-actions .btn.small {
+    height: 36px;
+    padding: 8px 6px;
+    font-size: 0.75em;
 }
 
 .no-files-message {
@@ -1148,20 +1247,6 @@ input[type="text"]::placeholder {
 
 .no-files-message p {
     margin: 5px 0;
-}
-
-.file-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-.file-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
 }
 
 .pass-checkbox {
@@ -1402,7 +1487,7 @@ input[type="text"]::placeholder {
 
 #fileList {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* 2 колонки */
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
 }
 
@@ -1474,51 +1559,22 @@ input[type="text"]::placeholder {
     color: var(--text-muted);
 }
 
-@media (max-width: 2000px) {
-    .admin-container {
-        max-width: 1800px;
-    }
-    .admin-main-panel {
-        max-width: 1300px;
-    }
-}
-
-@media (max-width: 1600px) {
-    .admin-container {
-        max-width: 1400px;
-    }
-    .admin-main-panel {
-        max-width: 1100px;
-    }
-    .admin-employees-sidebar {
-        width: 650px;
-        margin-left: 30px;
-    }
-}
-
-@media (max-width: 2000px) {
-    .admin-layout {
-        grid-template-columns: 1fr;
-    }
-    .admin-employees-sidebar {
-        position: static;
-        max-height: none;
-        width: 100%;
-        margin-left: 0;
-    }
-    .admin-main-panel {
-        max-width: 100%;
-        margin: 0;
-    }
-}
-
-@media (max-width: 1200px) {
-    .admin-container {
-        max-width: 100%;
-    }
-}
-
+/* Адаптивность для мобильных */
 @media (max-width: 768px) {
+    .file-actions {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    
+    .file-actions .btn.small {
+        height: 40px;
+        padding: 10px 8px;
+    }
+    
+    .files-list .file-actions .btn.small {
+        height: 38px;
+    }
+    
     body {
         padding: 10px;
     }
@@ -1742,4 +1798,48 @@ input[type="text"]::placeholder {
 
 #fileList li:last-child {
     margin-bottom: 0;
+}
+
+@media (max-width: 2000px) {
+    .admin-container {
+        max-width: 1800px;
+    }
+    .admin-main-panel {
+        max-width: 1300px;
+    }
+}
+
+@media (max-width: 1600px) {
+    .admin-container {
+        max-width: 1400px;
+    }
+    .admin-main-panel {
+        max-width: 1100px;
+    }
+    .admin-employees-sidebar {
+        width: 650px;
+        margin-left: 30px;
+    }
+}
+
+@media (max-width: 2000px) {
+    .admin-layout {
+        grid-template-columns: 1fr;
+    }
+    .admin-employees-sidebar {
+        position: static;
+        max-height: none;
+        width: 100%;
+        margin-left: 0;
+    }
+    .admin-main-panel {
+        max-width: 100%;
+        margin: 0;
+    }
+}
+
+@media (max-width: 1200px) {
+    .admin-container {
+        max-width: 100%;
+    }
 }
