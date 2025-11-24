@@ -51,6 +51,30 @@
         </div>
     </div>
 
+    <!-- Модальное окно выбора сотрудника -->
+    <div id="employeeSelectionModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>🔍 Выбор сотрудника</h2>
+            <div class="disclaimer-text">
+                <p><strong>Для файла:</strong> <span id="fileNameDisplay"></span></p>
+                <p>Найдено несколько возможных сотрудников. Выберите правильного:</p>
+                
+                <div id="employeeSelectionList" style="max-height: 300px; overflow-y: auto; margin: 15px 0;">
+                    <!-- Список сотрудников будет здесь -->
+                </div>
+                
+                <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <strong>💡 Подсказка:</strong> Обратите внимание на должность и количество файлов в папках
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn ghost" id="cancelEmployeeSelection">Отмена</button>
+                <button class="btn" id="confirmEmployeeSelection" disabled>✅ Сохранить выбранному сотруднику</button>
+            </div>
+        </div>
+    </div>
+
     <div class="app">
         <div class="warning-banner">
             ⚠️ Внимание! Система отслеживает активность. Бездействие более 20 секунд (отсутствие движения мыши или ввода текста) приведет к блокировке теста!
