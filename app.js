@@ -17,9 +17,9 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Rin_Valhalla' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Dexter_Valhalla' },
     { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
-    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Chaffy_Washington' },
-    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Michael_Sector' },
-    { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Sairus_Ronda' },
+    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Sairus_Ronda' },
+    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
@@ -2873,3 +2873,4 @@ function clearAllData() {
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', initUI);
+
