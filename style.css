@@ -33,7 +33,7 @@ body {
 
 .app {
   width: 100%;
-  max-width: 125rem;
+  max-width: 1400px;
   position: relative;
   margin: 0 auto;
 }
@@ -778,6 +778,7 @@ input[type="text"]::placeholder {
     gap: 30px;
     align-items: start;
     width: 125rem;
+    margin-left: -350px;
 }
 
 .admin-employees-sidebar {
@@ -790,7 +791,8 @@ input[type="text"]::placeholder {
     top: 20px;
     max-height: calc(100vh - 40px);
     overflow-y: auto;
-    width: 46.875rem;
+    width: 750px;
+    margin-left: 50px;
 }
 
 .admin-main-panel {
@@ -977,7 +979,6 @@ input[type="text"]::placeholder {
     opacity: 1;
 }
 
-/* Стили для пустых папок - теперь кликабельные */
 .folder-card.empty {
     background: linear-gradient(135deg, rgba(244, 67, 54, 0.1) 0%, rgba(244, 67, 54, 0.05) 100%);
     border-color: rgba(244, 67, 54, 0.3);
@@ -1160,7 +1161,6 @@ input[type="text"]::placeholder {
     gap: 10px;
 }
 
-/* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ ФАЙЛОВ - КНОПКИ ВНИЗУ */
 .file-item {
     display: grid;
     grid-template-columns: 1fr;
@@ -1203,7 +1203,6 @@ input[type="text"]::placeholder {
     margin-top: 4px;
 }
 
-/* НОВЫЕ СТИЛИ ДЛЯ КНОПОК ВНИЗУ */
 .file-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1224,7 +1223,6 @@ input[type="text"]::placeholder {
     margin: 0;
 }
 
-/* Специфические стили для кнопок в модальном окне папки */
 .files-list .file-actions {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
@@ -1725,6 +1723,24 @@ input[type="text"]::placeholder {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+
+    .admin-layout {
+        grid-template-columns: 1fr;
+        width: 100%;
+        margin-left: 0;
+    }
+    
+    .admin-employees-sidebar {
+        width: 100%;
+        margin-left: 0;
+        position: static;
+        max-height: none;
+    }
+    
+    .admin-main-panel {
+        max-width: 100%;
+        margin: 0;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1782,6 +1798,10 @@ input[type="text"]::placeholder {
     #fileList li {
         padding: 10px;
     }
+
+    #fileList {
+        grid-template-columns: 1fr;
+    }
 }
 
 .admin-main-panel .card {
@@ -1820,7 +1840,7 @@ input[type="text"]::placeholder {
     }
 }
 
-@media (max-width: 2000px) {
+@media (max-width: 1200px) {
     .admin-layout {
         grid-template-columns: 1fr;
     }
