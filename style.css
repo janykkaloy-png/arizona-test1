@@ -33,7 +33,7 @@ body {
 
 .app {
   width: 100%;
-  max-width: 1400px;
+  max-width: 125rem;
   position: relative;
   margin: 0 auto;
 }
@@ -778,7 +778,6 @@ input[type="text"]::placeholder {
     gap: 30px;
     align-items: start;
     width: 125rem;
-    margin-left: -350px;
 }
 
 .admin-employees-sidebar {
@@ -791,8 +790,7 @@ input[type="text"]::placeholder {
     top: 20px;
     max-height: calc(100vh - 40px);
     overflow-y: auto;
-    width: 750px;
-    margin-left: 50px;
+    width: 46.875rem;
 }
 
 .admin-main-panel {
@@ -1843,4 +1841,3 @@ input[type="text"]::placeholder {
         max-width: 100%;
     }
 }
-
