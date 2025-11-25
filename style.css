@@ -777,7 +777,7 @@ input[type="text"]::placeholder {
     grid-template-columns: auto 1fr;
     gap: 30px;
     align-items: start;
-    width: 2000px;
+    width: 125rem;
     margin-left: -350px;
 }
 
@@ -1843,3 +1843,4 @@ input[type="text"]::placeholder {
         max-width: 100%;
     }
 }
+
