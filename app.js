@@ -14,19 +14,19 @@ let playersDatabase = JSON.parse(localStorage.getItem('playersDatabase') || '[]'
 
 // Фиксированная структура сотрудников с реальными именами
 const FIXED_EMPLOYEE_STRUCTURE = [
-    { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Rin_Valhalla' },
+    { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Вакантно' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Dexter_Valhalla' },
     { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
     { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Sairus_Ronda' },
-    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Maks_Willov' },
     { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Angel_Extazzy' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Maks_Willov' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Hugo_Morgan' }
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Luffi_Valhalla' },
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
 const examQuestions = [
@@ -2873,5 +2873,6 @@ function clearAllData() {
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', initUI);
+
 
 
