@@ -4,15 +4,10 @@ const ADMIN_PASSWORD = "TryToPassTheExam2025kP9Lm2qR8xZ3ButIfYouLose5202tY6nB4vC
 const AES_KEY = "my_secret_aes_key_2024";
 const INACTIVITY_TIMEOUT = 20000;
 
-// Переменная для хранения статуса авторизации (сохраняется в localStorage)
 let isAdminAuthenticated = localStorage.getItem('adminAuthenticated') === 'true';
-
-let currentTestType = 'academy'; // 'academy', 'exam', 'retraining'
-
-// База зарегистрированных игроков
+let currentTestType = 'academy';
 let playersDatabase = JSON.parse(localStorage.getItem('playersDatabase') || '[]');
 
-// Фиксированная структура сотрудников с реальными именами
 const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Maks_Willov' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
@@ -87,22 +82,340 @@ let test = null;
 let blocked = false;
 let inactivityTimer = null;
 let lastActivityTime = Date.now();
-
-// Переменные для системы выбора сотрудника
 let currentGradingFile = null;
 let currentGradingAnswers = null;
 let currentFileIndex = null;
 
-// --- СИСТЕМА СОТРУДНИКОВ ---
+// --- ФУНКЦИИ ДЛЯ СОХРАНЕНИЯ ФАЙЛОВ В ПАПКИ СОТРУДНИКОВ ---
 
-// Загрузка данных сотрудников
+// УЛУЧШЕННАЯ ФУНКЦИЯ: Извлекает полный ник из названия файла
+function extractUsernameFromFilename(filename) {
+    console.log('🔍 Извлечение имени из файла:', filename);
+    
+    // Убираем расширение .docx
+    const nameWithoutExt = filename.replace(/\.docx$/, '');
+    
+    // Пытаемся найти полное имя до первого разделителя теста
+    const patterns = [
+        // Формат: Maks_Willov_Academy_15мин_результаты.docx
+        /^([^_]+_[^_]+)_(?:Academy|Академия|Exam|Экзамен|Retraining|Переаттестация)/i,
+        // Формат: Maks_Willov_Academy_15мин_оценка_75%.docx
+        /^([^_]+_[^_]+)_(?:Academy|Академия|Exam|Экзамен|Retraining|Переаттестация).*?оценка/i,
+        // Формат: Maks_Willov_код_разблокировки.docx
+        /^([^_]+_[^_]+)_код_разблокировки/i,
+        // Формат: Maks_Willov_Academy_разблокировка_...
+        /^([^_]+_[^_]+)_(?:Academy|Академия|Exam|Экзамен|Retraining|Переаттестация).*?разблокировка/i,
+        // Более простой вариант: два слова через подчеркивание в начале
+        /^([a-zA-Z]+_[a-zA-Z]+)_/,
+        // Если есть только одно слово: Maks_Academy_...
+        /^([a-zA-Z]+)_(?:Academy|Академия|Exam|Экзамен|Retraining|Переаттестация)/i,
+    ];
+    
+    for (const pattern of patterns) {
+        const match = nameWithoutExt.match(pattern);
+        if (match && match[1]) {
+            const extractedName = match[1];
+            console.log('✅ Извлечено полное имя:', extractedName, 'из', filename);
+            return extractedName;
+        }
+    }
+    
+    // Если не нашли через паттерны, пробуем разделить по подчеркиваниям
+    const parts = nameWithoutExt.split('_');
+    
+    // Пробуем найти полное имя (две части)
+    if (parts.length >= 2) {
+        // Проверяем, не является ли вторая часть типом теста
+        const secondPart = parts[1].toLowerCase();
+        const isTestType = ['academy', 'академия', 'exam', 'экзамен', 'retraining', 'переаттестация'].includes(secondPart);
+        
+        if (!isTestType && /^[a-zA-Z]+$/.test(parts[0]) && /^[a-zA-Z]+$/.test(parts[1])) {
+            const fullName = `${parts[0]}_${parts[1]}`;
+            console.log('✅ Извлечено полное имя (разделитель):', fullName, 'из', filename);
+            return fullName;
+        }
+    }
+    
+    // Если только одно слово
+    if (parts.length >= 1 && /^[a-zA-Z]+$/.test(parts[0])) {
+        console.log('⚠️ Извлечено только имя:', parts[0], 'из', filename);
+        return parts[0];
+    }
+    
+    console.error('❌ Не удалось извлечь имя из файла:', filename);
+    return null;
+}
+
+function extractTestTypeFromFilename(filename) {
+    const lowerName = filename.toLowerCase();
+    
+    if (lowerName.includes('академия') || lowerName.includes('academy')) return 'academy';
+    if (lowerName.includes('экзамен') || lowerName.includes('exam')) return 'exam';
+    if (lowerName.includes('переаттестация') || lowerName.includes('retraining')) return 'retraining';
+    
+    const parts = filename.split('_');
+    if (parts.length >= 2) {
+        const possibleType = parts[1].toLowerCase();
+        if (possibleType.includes('exam') || possibleType.includes('экзамен')) return 'exam';
+        if (possibleType.includes('academy') || possibleType.includes('академия')) return 'academy';
+        if (possibleType.includes('retraining') || possibleType.includes('переатт')) return 'retraining';
+    }
+    
+    return 'academy';
+}
+
+function extractTimeFromFilename(filename) {
+    const match = filename.match(/(\d+)мин/);
+    return match ? parseInt(match[1]) : 15;
+}
+
+function findPossibleEmployees(username) {
+    console.log('🔍 Поиск сотрудников для:', username);
+    
+    const employeesData = loadEmployeesData();
+    
+    if (!username || username.trim() === '') {
+        return Object.values(employeesData)
+            .filter(emp => emp.username && emp.username !== 'Вакантно')
+            .map(emp => ({
+                ...emp,
+                matchScore: 50
+            }));
+    }
+    
+    const cleanUsername = username.toLowerCase().replace(/[^a-zа-яё0-9]/g, '');
+    
+    const results = Object.values(employeesData)
+        .filter(emp => emp.username && emp.username !== 'Вакантно')
+        .map(emp => {
+            const cleanEmpName = emp.username.toLowerCase().replace(/[^a-zа-яё0-9]/g, '');
+            let score = 0;
+            
+            if (cleanEmpName === cleanUsername) score = 100;
+            if (cleanEmpName.includes(cleanUsername)) score = Math.max(score, 90);
+            if (cleanUsername.includes(cleanEmpName)) score = Math.max(score, 85);
+            
+            const empParts = cleanEmpName.split(/[_\s-]/);
+            const userParts = cleanUsername.split(/[_\s-]/);
+            
+            let partScore = 0;
+            empParts.forEach(empPart => {
+                userParts.forEach(userPart => {
+                    if (empPart === userPart) partScore += 50;
+                    else if (empPart.includes(userPart)) partScore += 30;
+                    else if (userPart.includes(empPart)) partScore += 25;
+                });
+            });
+            
+            if (partScore > 0) {
+                score = Math.max(score, partScore / Math.max(empParts.length, userParts.length));
+            }
+            
+            if (cleanUsername.length < 3) {
+                score *= 0.7;
+            }
+            
+            return {
+                ...emp,
+                matchScore: Math.min(100, Math.round(score))
+            };
+        })
+        .filter(emp => emp.matchScore > 30)
+        .sort((a, b) => b.matchScore - a.matchScore);
+    
+    return results;
+}
+
+function showEmployeeSelectionModal(filename, username, testType, gradedFile, gradedAnswers, fileIndex) {
+    console.log('📁 Открытие модального окна для файла:', filename);
+    
+    const possibleEmployees = findPossibleEmployees(username);
+    
+    if (possibleEmployees.length === 0) {
+        showError(`Не найдено сотрудников для имени "${username}". Проверьте правильность имени в файле.`);
+        return;
+    }
+    
+    if (possibleEmployees.length === 1) {
+        console.log('✅ Найден один сотрудник, сохраняем автоматически:', possibleEmployees[0].username);
+        const employee = possibleEmployees[0];
+        saveGradedResultsToEmployee(employee, gradedFile, gradedAnswers, fileIndex);
+        return;
+    }
+    
+    const modal = document.getElementById('employeeSelectionModal');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const employeeList = document.getElementById('employeeSelectionList');
+    const confirmBtn = document.getElementById('confirmEmployeeSelection');
+    
+    currentGradingFile = gradedFile;
+    currentGradingAnswers = gradedAnswers;
+    currentFileIndex = fileIndex;
+    
+    fileNameDisplay.textContent = filename;
+    employeeList.innerHTML = '';
+    
+    possibleEmployees.forEach((employee, index) => {
+        const employeeOption = document.createElement('div');
+        employeeOption.className = 'employee-option';
+        employeeOption.innerHTML = `
+            <input type="radio" name="employeeSelect" id="employee_${index}" value="${employee.id}">
+            <div class="employee-info">
+                <div class="employee-name">${escapeHtml(employee.username)}</div>
+                <div class="employee-position">${employee.position}</div>
+                <div class="employee-stats">
+                    <span>📁 Академия: ${employee.files.academy.length}</span>
+                    <span>🎓 Экзамен: ${employee.files.exam.length}</span>
+                    <span>🔄 Переатт.: ${employee.files.retraining.length}</span>
+                </div>
+                <div class="employee-match-score">Совпадение: ${employee.matchScore}%</div>
+            </div>
+        `;
+        
+        employeeOption.querySelector('input').addEventListener('change', (e) => {
+            document.querySelectorAll('.employee-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            employeeOption.classList.add('selected');
+            confirmBtn.disabled = false;
+        });
+        
+        employeeList.appendChild(employeeOption);
+    });
+    
+    document.getElementById('cancelEmployeeSelection').onclick = () => {
+        modal.style.display = 'none';
+        showMessage('Сохранение отменено', 'info');
+    };
+    
+    confirmBtn.onclick = () => {
+        const selectedInput = document.querySelector('input[name="employeeSelect"]:checked');
+        if (selectedInput) {
+            const employeeId = selectedInput.value;
+            const employeesData = loadEmployeesData();
+            const selectedEmployee = employeesData[employeeId];
+            
+            if (selectedEmployee) {
+                console.log('✅ Выбран сотрудник:', selectedEmployee.username);
+                saveGradedResultsToEmployee(selectedEmployee, currentGradingFile, currentGradingAnswers, currentFileIndex);
+                modal.style.display = 'none';
+            }
+        }
+    };
+    
+    confirmBtn.disabled = true;
+    document.querySelectorAll('.employee-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    
+    modal.style.display = 'flex';
+}
+
+function saveGradedResultsToEmployee(employee, gradedFile, gradedAnswers, fileIndex) {
+    console.log('💾 СОХРАНЕНИЕ ОЦЕНКИ для сотрудника:', employee.username);
+    
+    const username = employee.username;
+    const testType = gradedFile.testType || extractTestTypeFromFilename(gradedFile.name);
+    const score = gradedFile.score;
+    const timeSpent = gradedFile.timeSpent || extractTimeFromFilename(gradedFile.name) || 15;
+    const correctAnswers = gradedFile.correctAnswers;
+    const totalAnswers = gradedFile.totalAnswers;
+    const passed = gradedFile.passed;
+    
+    const testTypeName = getTestTypeName(testType);
+    
+    let reportText = `${testTypeName.toUpperCase()} ВОЕННОЙ ПОЛИЦИИ - РЕЗУЛЬТАТЫ С ОЦЕНКОЙ
+=================================
+
+Общая информация:
+----------------
+Имя: ${username}
+Тип теста: ${testTypeName}
+Дата оценки: ${new Date().toLocaleString('ru-RU')}
+Время выполнения: ${timeSpent} минут
+Всего вопросов: ${totalAnswers}
+Правильных ответов: ${correctAnswers}
+Оценка: ${score}%
+Статус: ${passed ? '✅ ПРОЙДЕН' : '❌ НЕ ПРОЙДЕН'}
+
+Ответы с оценкой:
+----------------
+`;
+
+    gradedAnswers.forEach((answer, index) => {
+        reportText += `\n${index + 1}. ${escapeHtml(answer.question)}\n`;
+        reportText += `Ответ: ${escapeHtml(answer.answer)}\n`;
+        reportText += `Оценка: ${answer.correct ? '✅ Правильно' : '❌ Неправильно'}\n`;
+        reportText += `---------------------------------\n`;
+    });
+
+    reportText += `\n
+=================================
+Arizona RP | Военная Полиция
+Тест оценен администратором`;
+
+    const fileName = `${username}_${testTypeName}_${timeSpent}мин_оценка_${score}%.docx`;
+    
+    console.log('📝 Сохраняем файл:', fileName, 'для сотрудника:', username, 'тип:', testType);
+    
+    const success = addFileToEmployeeFolder(
+        username,
+        testType,
+        fileName,
+        reportText
+    );
+    
+    if (success) {
+        showMessage(`✅ Оценка сохранена! Файл "${fileName}" сохранен в папку сотрудника ${username}`, "success");
+        
+        const savedFiles = JSON.parse(localStorage.getItem("adminFiles") || "[]");
+        if (savedFiles[fileIndex]) {
+            savedFiles[fileIndex].username = username;
+            savedFiles[fileIndex].testType = testType;
+            savedFiles[fileIndex].graded = true;
+            savedFiles[fileIndex].score = score;
+            savedFiles[fileIndex].correctAnswers = correctAnswers;
+            savedFiles[fileIndex].totalAnswers = totalAnswers;
+            savedFiles[fileIndex].passed = passed;
+            localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
+        }
+        
+        const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
+        statistics.push({
+            username: username,
+            testType: testType,
+            score: score,
+            timeSpent: timeSpent,
+            correctAnswers: correctAnswers,
+            totalAnswers: totalAnswers,
+            passed: passed,
+            date: new Date().toISOString(),
+            graded: true
+        });
+        
+        localStorage.setItem("testStatistics", JSON.stringify(statistics));
+        
+        const gradingPanel = document.getElementById("gradingPanel");
+        if (gradingPanel) {
+            gradingPanel.style.display = "none";
+        }
+        
+        renderFiles();
+        renderAdmin();
+    } else {
+        console.error('❌ Ошибка сохранения файла');
+        showError(`❌ Не удалось сохранить файл в папку сотрудника ${username}. Проверьте, что сотрудник существует в системе.`);
+    }
+}
+
+// --- ОСНОВНЫЕ ФУНКЦИИ СИСТЕМЫ ---
+
 function loadEmployeesData() {
     const saved = localStorage.getItem('fixedEmployees');
     let employeesData;
     
     if (saved) {
         employeesData = JSON.parse(saved);
-        // Восстанавливаем фиксированных сотрудников из FIXED_EMPLOYEE_STRUCTURE
         FIXED_EMPLOYEE_STRUCTURE.forEach(fixedEmp => {
             if (fixedEmp.username !== 'Вакантно') {
                 if (employeesData[fixedEmp.id]) {
@@ -111,7 +424,6 @@ function loadEmployeesData() {
             }
         });
     } else {
-        // Инициализация структуры с фиксированными именами
         employeesData = {};
         FIXED_EMPLOYEE_STRUCTURE.forEach(emp => {
             employeesData[emp.id] = {
@@ -135,121 +447,49 @@ function loadEmployeesData() {
     return employeesData;
 }
 
-// Сохранение данных сотрудников
 function saveEmployeesData(employeesData) {
     localStorage.setItem('fixedEmployees', JSON.stringify(employeesData));
 }
 
-// Получение сотрудника по имени пользователя
 function getEmployeeByUsername(username, employeesData) {
     return Object.values(employeesData).find(emp => 
         emp.username.toLowerCase() === username.toLowerCase() && emp.username !== 'Вакантно'
     );
 }
 
-// Функция для определения состояния папки
-function getFolderState(files) {
-    if (files.length === 0) return 'empty';
-    
-    const hasUnlockFiles = files.some(f => f.isUnlockFile);
-    const hasGradedFiles = files.some(f => f.graded && !f.isUnlockFile);
-    const hasNewFiles = files.some(f => f.isNew);
-    const hasPendingFiles = files.some(f => !f.graded && !f.isUnlockFile);
-    
-    if (hasUnlockFiles) return 'has-unlock';
-    if (hasNewFiles) return 'has-new';
-    if (hasPendingFiles) return 'has-pending';
-    if (hasGradedFiles) return 'has-graded';
-    
-    return 'has-files';
-}
-
-// Функция для получения статистики папки
-function getFolderStats(files) {
-    const totalFiles = files.length;
-    const unlockFiles = files.filter(f => f.isUnlockFile).length;
-    const gradedFiles = files.filter(f => f.graded && !f.isUnlockFile).length;
-    const pendingFiles = files.filter(f => !f.graded && !f.isUnlockFile).length;
-    const newFiles = files.filter(f => f.isNew).length;
-    
-    const averageScore = gradedFiles > 0 
-        ? Math.round(files.filter(f => f.graded && !f.isUnlockFile)
-                         .reduce((sum, f) => sum + parseInt(f.score), 0) / gradedFiles)
-        : 0;
-    
-    return { 
-        totalFiles, 
-        unlockFiles, 
-        gradedFiles, 
-        pendingFiles,
-        newFiles,
-        averageScore 
-    };
-}
-
-// Вспомогательные функции для папок
-function getFolderIcon(folderType) {
-    const icons = {
-        academy: '📚',
-        exam: '🎓',
-        retraining: '🔄'
-    };
-    return icons[folderType] || '📁';
-}
-
-function getFolderLabel(folderType) {
-    const labels = {
-        academy: 'Академия',
-        exam: 'Экзамен',
-        retraining: 'Переатт.'
-    };
-    return labels[folderType] || folderType;
-}
-
-function getFolderBadges(files) {
-    let badges = '';
-    const stats = getFolderStats(files);
-    
-    if (stats.unlockFiles > 0) {
-        badges += '<div class="folder-badge badge-unlock">🔓</div>';
-    }
-    if (stats.newFiles > 0) {
-        badges += '<div class="folder-badge badge-new">NEW</div>';
-    }
-    
-    return badges;
-}
-
-function getFolderStatus(files, stats) {
-    if (stats.unlockFiles > 0) {
-        return `<div class="folder-details">${stats.unlockFiles} блокировка</div>`;
-    }
-    if (stats.pendingFiles > 0) {
-        return `<div class="folder-details">Ожидает оценки</div>`;
-    }
-    if (stats.gradedFiles > 0) {
-        const scoreClass = getScoreClass(stats.averageScore);
-        return `<div class="folder-score ${scoreClass}">${stats.averageScore}%</div>`;
-    }
-    return `<div class="folder-details"></div>`;
-}
-
-function getScoreClass(score) {
-    if (score >= 90) return 'score-excellent';
-    if (score >= 70) return 'score-good';
-    if (score >= 50) return 'score-average';
-    return 'score-poor';
-}
-
-// Добавление файла в папку сотрудника
 function addFileToEmployeeFolder(username, folderType, fileName, content) {
+    console.log('🔍 ПОИСК СОТРУДНИКА:', username, 'тип папки:', folderType);
+    
     const employeesData = loadEmployeesData();
     let employee = getEmployeeByUsername(username, employeesData);
     
     if (!employee) {
-        console.error(`Сотрудник с именем ${username} не найден`);
+        employee = Object.values(employeesData).find(emp => 
+            emp.username !== 'Вакантно' && 
+            username.toLowerCase().includes(emp.username.toLowerCase())
+        );
+        
+        if (!employee) {
+            employee = Object.values(employeesData).find(emp => 
+                emp.username !== 'Вакантно' && 
+                emp.username.toLowerCase().includes(username.toLowerCase())
+            );
+        }
+        
+        if (!employee) {
+            employee = Object.values(employeesData).find(emp => 
+                emp.username !== 'Вакантно' && 
+                emp.username.toLowerCase().startsWith(username.toLowerCase().split('_')[0])
+            );
+        }
+    }
+    
+    if (!employee) {
+        console.error(`❌ Сотрудник с именем ${username} не найден`);
         return false;
     }
+    
+    console.log('✅ Найден сотрудник:', employee.username, employee.position);
 
     const file = {
         id: Date.now().toString(),
@@ -271,230 +511,52 @@ function addFileToEmployeeFolder(username, folderType, fileName, content) {
     employee.files[folderType].push(file);
     saveEmployeesData(employeesData);
     
-    console.log(`Файл ${fileName} сохранен в папку ${folderType} сотрудника ${username}`);
+    console.log(`✅ Файл ${fileName} сохранен в папку ${folderType} сотрудника ${employee.username}`);
     return true;
 }
 
-// Функция для загрузки файла в папку сотрудника
-function uploadFileToEmployeeFolder(file, employeeId, folderType, modal) {
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-        const content = e.target.result;
-        const fileName = file.name;
-        
-        // Сохраняем файл в папку сотрудника
-        const employeesData = loadEmployeesData();
-        const employee = employeesData[employeeId];
-        
-        if (!employee) {
-            showError('Сотрудник не найден!');
-            return;
-        }
-        
-        const newFile = {
-            id: Date.now().toString(),
-            name: fileName,
-            content: typeof content === 'string' ? content : new TextDecoder().decode(content),
-            date: new Date().toLocaleString('ru-RU'),
-            type: 'uploaded',
-            graded: false,
-            score: 0,
-            isUnlockFile: false,
-            isGraded: false,
-            isNew: true
-        };
-        
-        if (!employee.files[folderType]) {
-            employee.files[folderType] = [];
-        }
-        
-        employee.files[folderType].push(newFile);
-        saveEmployeesData(employeesData);
-        
-        showMessage(`Файл "${fileName}" успешно загружен в папку!`, 'success');
-        
-        // Закрываем модальное окно и обновляем интерфейс
-        modal.remove();
-        renderAdmin();
-    };
-    
-    reader.onerror = () => {
-        showError('Ошибка при чтении файла');
-    };
-    
-    // Читаем файл как текст
-    reader.readAsText(file);
+function getTestTypeName(type) {
+    switch(type) {
+        case 'exam': return 'Экзамен';
+        case 'retraining': return 'Переаттестация';
+        case 'academy': return 'Академия';
+        default: return 'Тест';
+    }
 }
 
-// --- СИСТЕМА РЕГИСТРАЦИИ ИГРОКОВ ---
-function validateAndRegisterPlayer(username, testType) {
-    const nicknameRegex = /^[a-zA-Z0-9\s_-]+$/;
-    if (!nicknameRegex.test(username)) {
-        showError("Ник должен содержать только латинские буквы, цифры, пробелы, дефисы и подчеркивания!");
-        return false;
-    }
-    
-    if (username.length < 2) {
-        showError("Ник должен содержать минимум 2 символа!");
-        return false;
-    }
-    
-    let player = playersDatabase.find(p => p.username.toLowerCase() === username.toLowerCase());
-    
-    if (!player) {
-        const confirmed = confirm(`Вы новый игрок?\n\nВаш ник: ${username}\n\nВНИМАНИЕ: После подтверждения изменить ник будет невозможно!\n\nПодтверждаете правильность ника?`);
+function parseAnswersFromReport(reportText) {
+    const lines = reportText.split('\n');
+    const answers = [];
+    let currentQuestion = null;
+    let currentAnswer = null;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
         
-        if (!confirmed) {
-            showError("Пожалуйста, введите правильный никнейм");
-            return false;
-        }
-        
-        player = {
-            id: Date.now().toString(),
-            username: username,
-            registrationDate: new Date().toISOString(),
-            folders: {
-                exam: `${username}_Exam`,
-                retraining: `${username}_Retraining`, 
-                academy: `${username}_Academy`
-            },
-            tests: {
-                exam: [],
-                retraining: [],
-                academy: []
+        if (line.match(/^\d+\./)) {
+            if (currentQuestion && currentAnswer !== null) {
+                answers.push({
+                    question: currentQuestion,
+                    answer: currentAnswer,
+                    correct: false
+                });
             }
-        };
-        
-        playersDatabase.push(player);
-        localStorage.setItem('playersDatabase', JSON.stringify(playersDatabase));
-        
-        showMessage(`Игрок ${username} успешно зарегистрирован!`, "success");
+            currentQuestion = line.replace(/^\d+\.\s*/, '');
+            currentAnswer = null;
+        } else if (line.startsWith('Ответ:') && currentQuestion) {
+            currentAnswer = line.replace('Ответ:', '').trim();
+        }
     }
-    
-    localStorage.setItem('currentPlayer', JSON.stringify(player));
-    return true;
-}
 
-function getCurrentPlayer() {
-    return JSON.parse(localStorage.getItem('currentPlayer') || 'null');
-}
-
-function updatePlayersDatalist() {
-    const datalist = document.getElementById('playersList');
-    datalist.innerHTML = playersDatabase.map(player => 
-        `<option value="${player.username}">`
-    ).join('');
-}
-
-// --- ФУНКЦИИ АДМИН АУТЕНТИФИКАЦИИ ---
-function authenticateAdmin() {
-    if (isAdminAuthenticated) {
-        return true;
+    if (currentQuestion && currentAnswer !== null) {
+        answers.push({
+            question: currentQuestion,
+            answer: currentAnswer,
+            correct: false
+        });
     }
-    
-    const pwd = prompt("Введите пароль для Админки:");
-    if (pwd === ADMIN_PASSWORD) {
-        isAdminAuthenticated = true;
-        localStorage.setItem('adminAuthenticated', 'true');
-        return true;
-    } else {
-        alert("Неверный пароль!");
-        return false;
-    }
-}
 
-function logoutAdmin() {
-    isAdminAuthenticated = false;
-    localStorage.setItem('adminAuthenticated', 'false');
-    showMessage("Выход из админ-панели выполнен", "info");
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    document.querySelector(".tab[data-tab='academy']").classList.add("active");
-    currentTestType = 'academy';
-    renderAcademy();
-}
-
-// --- УПРАВЛЕНИЕ ДИСКЛЕЙМЕРОМ ---
-function showDisclaimer() {
-    const username = document.getElementById("username").value.trim();
-    if (!username) {
-        showError("Введите имя перед началом теста!");
-        return;
-    }
-    
-    const modal = document.getElementById("disclaimerModal");
-    modal.style.display = "flex";
-    document.getElementById("closeDisclaimerBtn").onclick = closeDisclaimer;
-    document.getElementById("confirmStartBtn").onclick = confirmStartTest;
-}
-
-function closeDisclaimer() {
-    const modal = document.getElementById("disclaimerModal");
-    modal.style.display = "none";
-}
-
-function confirmStartTest() {
-    const modal = document.getElementById("disclaimerModal");
-    modal.style.display = "none";
-    actuallyStartTest();
-}
-
-// --- СИСТЕМА БЕЗДЕЙСТВИЯ ---
-function resetInactivityTimer() {
-    lastActivityTime = Date.now();
-    if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-    }
-    
-    if (test && !test.blocked) {
-        // Добавляем буфер в 10 секунд при старте теста
-        const bufferTime = test.current === 0 ? 10000 : 0;
-        
-        inactivityTimer = setTimeout(() => {
-            const timeSinceLastActivity = Date.now() - lastActivityTime;
-            if (test && !test.blocked && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
-                console.log(`Блокировка: бездействие ${timeSinceLastActivity}ms`);
-                showError("Тест заблокирован за бездействие!");
-                blockTest();
-            }
-        }, INACTIVITY_TIMEOUT + bufferTime);
-    }
-}
-
-function trackActivity() {
-    // Не сбрасываем таймер слишком часто (раз в 2 секунды минимум)
-    const now = Date.now();
-    if (now - lastActivityTime < 2000) {
-        return;
-    }
-    
-    resetInactivityTimer();
-}
-
-function showInactivityWarning() {
-    const timeLeft = INACTIVITY_TIMEOUT - (Date.now() - lastActivityTime);
-    if (timeLeft <= 5000 && !document.getElementById('inactivityWarning')) {
-        const warning = document.createElement('div');
-        warning.className = 'inactivity-warning';
-        warning.id = 'inactivityWarning';
-        warning.innerHTML = `⚠️ Внимание! Бездействие обнаружено!<br>Тест будет заблокирован через ${Math.ceil(timeLeft/1000)} сек.`;
-        document.body.appendChild(warning);
-        
-        setTimeout(() => {
-            const w = document.getElementById('inactivityWarning');
-            if (w) w.remove();
-        }, 5000);
-    }
-}
-
-// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-function shuffleArray(arr) {
-    const newArr = [...arr];
-    for (let i = newArr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-    }
-    return newArr;
+    return answers;
 }
 
 function escapeHtml(str) {
@@ -502,15 +564,6 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
-}
-
-function generateReadableCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
 }
 
 function arrayBufferToBase64(buffer) {
@@ -522,277 +575,6 @@ function arrayBufferToBase64(buffer) {
     return btoa(binary);
 }
 
-// --- СОХРАНЕНИЕ СОСТОЯНИЯ ---
-function saveTestState() {
-    if (test) {
-        localStorage.setItem('currentTest', JSON.stringify({
-            username: test.username,
-            current: test.current,
-            answers: test.answers,
-            shuffledQuestions: test.shuffledQuestions,
-            startTime: test.startTime,
-            blocked: test.blocked,
-            unlockCode: test.unlockCode,
-            testType: test.testType,
-            playerId: test.playerId
-        }));
-    }
-}
-
-function loadTestState() {
-    const saved = localStorage.getItem('currentTest');
-    if (saved) {
-        const savedTest = JSON.parse(saved);
-        test = {
-            username: savedTest.username,
-            current: savedTest.current,
-            answers: savedTest.answers,
-            shuffledQuestions: savedTest.shuffledQuestions,
-            startTime: new Date(savedTest.startTime),
-            blocked: savedTest.blocked,
-            unlockCode: savedTest.unlockCode,
-            testType: savedTest.testType || 'academy',
-            playerId: savedTest.playerId
-        };
-        blocked = savedTest.blocked;
-        currentTestType = savedTest.testType || 'academy';
-        
-        if (blocked) {
-            document.querySelectorAll("input, button").forEach(el => {
-                if (!el.id.includes("unlock") && el.id !== "username" && !el.closest(".tabs")) {
-                    el.disabled = true;
-                }
-            });
-        }
-    }
-}
-
-function clearTestState() {
-    localStorage.removeItem('currentTest');
-    test = null;
-    blocked = false;
-}
-
-// --- СИСТЕМА БЛОКИРОВКИ ---
-function blockTest() {
-    if (blocked || !test) return;
-    
-    blocked = true;
-    test.blocked = true;
-
-    document.querySelectorAll("input, button").forEach(el => {
-        if (!el.id.includes("unlock") && el.id !== "username" && !el.closest(".tabs")) {
-            el.disabled = true;
-        }
-    });
-
-    if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-        inactivityTimer = null;
-    }
-
-    if (!test.unlockCode) {
-        test.unlockCode = generateReadableCode();
-    }
-
-    createUnlockFile();
-    saveTestState();
-    renderBlockedScreen();
-}
-
-function createUnlockFile() {
-    const testTypeName = getTestTypeName(test.testType);
-    const unlockContent = `КОД РАЗБЛОКИРОВКИ ТЕСТА
-
-Тип теста: ${testTypeName}
-Имя пользователя: ${test.username}
-Код разблокировки: ${test.unlockCode}
-
-Причина блокировки: Бездействие
-Тест заблокирован: ${new Date().toLocaleString('ru-RU')}
-Прогресс: ${test.current + 1}/${TEST_COUNT} вопросов
-
-Для разблокировки теста обратитесь к администратору.
-
-Arizona RP | Военная Полиция`;
-
-    const encryptedUnlock = CryptoJS.AES.encrypt(unlockContent, AES_KEY).toString();
-    const unlockBlob = new Blob([btoa(encryptedUnlock)], { 
-        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-    });
-    saveAs(unlockBlob, `${test.username}_${testTypeName}_код_разблокировки.docx`);
-
-    // ✅ СОХРАНЯЕМ ФАЙЛ РАЗБЛОКИРОВКИ В ПАПКУ СОТРУДНИКА
-    saveUnlockFileToEmployeeFolder(test.username, test.testType, unlockContent);
-}
-
-function saveUnlockFileToEmployeeFolder(username, testType, unlockContent) {
-    const testTypeName = getTestTypeName(testType);
-    const fileName = `${username}_${testTypeName}_разблокировка_${new Date().toLocaleDateString('ru-RU')}.docx`;
-    
-    const success = addFileToEmployeeFolder(
-        username,
-        testType,
-        fileName,
-        unlockContent
-    );
-    
-    if (success) {
-        console.log(`Файл разблокировки сохранен в папку ${testType} сотрудника ${username}`);
-    } else {
-        console.error(`Не удалось сохранить файл разблокировки для сотрудника ${username}`);
-    }
-}
-
-function renderBlockedScreen() {
-    const testTypeName = getTestTypeName(test.testType);
-    const area = document.getElementById("mainArea");
-    area.innerHTML = `
-        <div class="blocked-note">
-            <h2>🚫 ${testTypeName} заблокирован за бездействие!</h2>
-            <p>Система зафиксировала отсутствие активности более 20 секунд.</p>
-            <p>Файл с кодом разблокировки был скачан и сохранен в вашу папку.</p>
-            <p>Отправьте файл <strong>${test.username}_${testTypeName}_код_разблокировки.docx</strong> администратору.</p>
-            
-            <div style="margin: 20px 0;">
-                <button class="btn ghost" id="resendCodeBtn">
-                    📧 Получить код повторно
-                </button>
-            </div>
-            
-            <div style="margin-top: 20px;">
-                <input type="text" id="unlockCodeInput" placeholder="Введите код от администратора" style="margin: 10px 0; width: 100%;">
-                <button class="btn" id="submitUnlockBtn">Разблокировать тест</button>
-            </div>
-        </div>
-    `;
-
-    document.getElementById("resendCodeBtn").addEventListener("click", () => {
-        createUnlockFile();
-        showMessage("Файл с кодом разблокировки отправлен на скачивание!", "success");
-    });
-
-    document.getElementById("submitUnlockBtn").addEventListener("click", () => {
-        const enteredCode = document.getElementById("unlockCodeInput").value.trim().toUpperCase();
-        if (enteredCode === test.unlockCode) {
-            blocked = false;
-            test.blocked = false;
-            document.querySelectorAll("input, button").forEach(el => el.disabled = false);
-            saveTestState();
-            showMessage("Тест успешно разблокирован!", "success");
-            resetInactivityTimer();
-            renderCurrentTest();
-        } else {
-            showError("Неверный код разблокировки!");
-        }
-    });
-}
-
-function unblockTest() {
-    const code = document.getElementById("username").value.trim().toUpperCase();
-    if (!test) {
-        showError("Нет активного теста для разблокировки!");
-        return;
-    }
-    
-    if (code === test.unlockCode) {
-        blocked = false;
-        test.blocked = false;
-        document.querySelectorAll("input, button").forEach(el => el.disabled = false);
-        saveTestState();
-        showMessage("Тест успешно разблокирован!", "success");
-        resetInactivityTimer();
-        renderCurrentTest();
-    } else {
-        showError("Неверный код разблокировки!");
-    }
-}
-
-// --- УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ ---
-function initUI() {
-    // Очистка старых таймеров при загрузке
-    if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-        inactivityTimer = null;
-    }
-    
-    loadTestState();
-    updatePlayersDatalist();
-    
-    document.addEventListener('mousemove', trackActivity);
-    document.addEventListener('mousedown', trackActivity);
-    document.addEventListener('keypress', trackActivity);
-    document.addEventListener('keydown', trackActivity);
-    
-    // ПЕРЕКЛЮЧЕНИЕ МЕЖДУ ТАБАМИ
-    document.querySelectorAll(".tab").forEach(tab => {
-        tab.addEventListener("click", () => {
-            trackActivity();
-            const tabName = tab.dataset.tab;
-            
-            document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-            tab.classList.add("active");
-            
-            // Управление видимостью карточек
-            const contentArea = document.getElementById("contentArea");
-            if (tabName === "admin") {
-                contentArea.classList.add("admin-active");
-                document.getElementById("mainArea").style.display = "none";
-                document.getElementById("adminArea").style.display = "block";
-                if (!authenticateAdmin()) {
-                    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-                    document.querySelector(".tab[data-tab='academy']").classList.add("active");
-                    document.getElementById("mainArea").style.display = "block";
-                    document.getElementById("adminArea").style.display = "none";
-                    contentArea.classList.remove("admin-active");
-                    currentTestType = 'academy';
-                    renderAcademy();
-                    return;
-                }
-                renderAdmin();
-            } else {
-                contentArea.classList.remove("admin-active");
-                document.getElementById("mainArea").style.display = "block";
-                document.getElementById("adminArea").style.display = "none";
-                currentTestType = tabName;
-                renderCurrentTest();
-            }
-        });
-    });
-
-    document.getElementById("startBtn").addEventListener("click", showDisclaimer);
-    document.getElementById("finishBtn").addEventListener("click", finishTestManually);
-    document.getElementById("unlockBtn").addEventListener("click", unblockTest);
-
-    document.addEventListener("visibilitychange", () => {
-        if (test && !blocked && document.hidden) {
-            showInactivityWarning();
-            setTimeout(() => blockTest(), 2000);
-        }
-    });
-
-    window.addEventListener("blur", () => {
-        if (test && !blocked) {
-            showInactivityWarning();
-            setTimeout(() => blockTest(), 2000);
-        }
-    });
-
-    document.getElementById("unlockBtn").style.display = "none";
-
-    setInterval(() => {
-        if (test && !test.blocked) {
-            const timeSinceLastActivity = Date.now() - lastActivityTime;
-            if (timeSinceLastActivity >= INACTIVITY_TIMEOUT - 5000) {
-                showInactivityWarning();
-            }
-        }
-    }, 1000);
-
-    renderAcademy();
-}
-
-// --- УВЕДОМЛЕНИЯ ---
 function showMessage(message, type = "info") {
     const alertDiv = document.createElement("div");
     alertDiv.style.cssText = `
@@ -827,7 +609,55 @@ function showError(message) {
     showMessage(message, "error");
 }
 
-// --- ФУНКЦИИ ДЛЯ ТЕСТИРОВАНИЯ ---
+function resetInactivityTimer() {
+    lastActivityTime = Date.now();
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+    }
+    
+    if (test && !test.blocked) {
+        const bufferTime = test.current === 0 ? 10000 : 0;
+        
+        inactivityTimer = setTimeout(() => {
+            const timeSinceLastActivity = Date.now() - lastActivityTime;
+            if (test && !test.blocked && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+                console.log(`Блокировка: бездействие ${timeSinceLastActivity}ms`);
+                showError("Тест заблокирован за бездействие!");
+                blockTest();
+            }
+        }, INACTIVITY_TIMEOUT + bufferTime);
+    }
+}
+
+function trackActivity() {
+    resetInactivityTimer();
+}
+
+function showInactivityWarning() {
+    const timeLeft = INACTIVITY_TIMEOUT - (Date.now() - lastActivityTime);
+    if (timeLeft <= 5000 && !document.getElementById('inactivityWarning')) {
+        const warning = document.createElement('div');
+        warning.className = 'inactivity-warning';
+        warning.id = 'inactivityWarning';
+        warning.innerHTML = `⚠️ Внимание! Бездействие обнаружено!<br>Тест будет заблокирован через ${Math.ceil(timeLeft/1000)} сек.`;
+        document.body.appendChild(warning);
+        
+        setTimeout(() => {
+            const w = document.getElementById('inactivityWarning');
+            if (w) w.remove();
+        }, 5000);
+    }
+}
+
+function shuffleArray(arr) {
+    const newArr = [...arr];
+    for (let i = newArr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+    }
+    return newArr;
+}
+
 function getQuestionsByType(type) {
     switch(type) {
         case 'exam': return examQuestions;
@@ -837,30 +667,30 @@ function getQuestionsByType(type) {
     }
 }
 
-function getTestTypeName(type) {
-    switch(type) {
-        case 'exam': return 'Экзамен';
-        case 'retraining': return 'Переаттестация';
-        case 'academy': return 'Академия';
-        default: return 'Тест';
+function showDisclaimer() {
+    const username = document.getElementById("username").value.trim();
+    if (!username) {
+        showError("Введите имя перед началом теста!");
+        return;
     }
+    
+    const modal = document.getElementById("disclaimerModal");
+    modal.style.display = "flex";
+    document.getElementById("closeDisclaimerBtn").onclick = closeDisclaimer;
+    document.getElementById("confirmStartBtn").onclick = confirmStartTest;
 }
 
-// Функция для извлечения имени пользователя из названия файла
-function extractUsernameFromFilename(filename) {
-    const match = filename.match(/^([^_]+)_/);
-    return match ? match[1] : null;
+function closeDisclaimer() {
+    const modal = document.getElementById("disclaimerModal");
+    modal.style.display = "none";
 }
 
-// Функция для определения типа теста из названия файла
-function extractTestTypeFromFilename(filename) {
-    if (filename.includes('Академия') || filename.includes('Academy')) return 'academy';
-    if (filename.includes('Экзамен') || filename.includes('Exam')) return 'exam';
-    if (filename.includes('Переаттестация') || filename.includes('Retraining')) return 'retraining';
-    return 'academy';
+function confirmStartTest() {
+    const modal = document.getElementById("disclaimerModal");
+    modal.style.display = "none";
+    actuallyStartTest();
 }
 
-// --- СТАРТ ТЕСТА ---
 function actuallyStartTest() {
     const username = document.getElementById("username").value.trim();
     if (!username) {
@@ -872,7 +702,6 @@ function actuallyStartTest() {
         return;
     }
     
-    // Очистка предыдущего таймера
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
         inactivityTimer = null;
@@ -898,15 +727,11 @@ function actuallyStartTest() {
     document.getElementById("finishBtn").style.display = "inline-block";
     showMessage("Тест начат! Не покидайте вкладку.", "success");
     
-    // Запускаем таймер с небольшой задержкой
-    setTimeout(() => {
-        resetInactivityTimer();
-    }, 1000);
+    resetInactivityTimer();
     
     renderCurrentTest();
 }
 
-// --- РЕНДЕР ТЕСТОВ ---
 function renderCurrentTest() {
     if (currentTestType === 'exam') {
         renderExam();
@@ -973,7 +798,7 @@ function renderRetraining() {
         area.innerHTML = `
             <div class="question-box">
                 <h2>🔄 Переаттестация Военной Полиции</h2>
-                <p>Введите ваше имя в поле ниже и нажмите "Начать тест" для прохождения переаттестации.</p>
+                <p>Введите ваше имя в поле ниже и нажмите "Начать теста" для прохождения переаттестации.</p>
                 <p><strong>Важно:</strong> Система отслеживает активность!</p>
                 <p>Тест состоит из 15 вопросов для обновления знаний и навыков.</p>
                 <div class="retraining-notice">
@@ -1054,7 +879,6 @@ function finishTestManually() {
     }
 }
 
-// --- ЗАВЕРШЕНИЕ ТЕСТА ---
 function finishTest() {
     const endTime = new Date();
     const timeSpent = Math.round((endTime - test.startTime) / 1000 / 60);
@@ -1163,7 +987,6 @@ function finishTestWithoutDownload() {
     });
 }
 
-// --- СОХРАНЕНИЕ РЕЗУЛЬТАТОВ ---
 function saveTestToPlayerFolder(testData, timeSpent) {
     const player = getCurrentPlayer();
     if (!player) return;
@@ -1217,922 +1040,350 @@ function saveTestResultForStatistics(testData, timeSpent) {
     localStorage.setItem('pendingTestResults', JSON.stringify(pendingResults));
 }
 
-// --- НОВАЯ СИСТЕМА: ВЫБОР СОТРУДНИКА ПРИ СОХРАНЕНИИ ---
-
-// Функция для поиска возможных сотрудников по имени
-function findPossibleEmployees(username) {
-    const employeesData = loadEmployeesData();
-    const cleanUsername = username.toLowerCase().replace(/[^a-z0-9]/g, '');
-    
-    return Object.values(employeesData)
-        .filter(emp => emp.username !== 'Вакантно')
-        .map(emp => {
-            const cleanEmpName = emp.username.toLowerCase().replace(/[^a-z0-9]/g, '');
-            let score = 0;
-            
-            // Оценка схожести
-            if (cleanEmpName === cleanUsername) score = 100; // Точное совпадение
-            else if (cleanEmpName.includes(cleanUsername)) score = 80; // Частичное совпадение
-            else if (cleanUsername.includes(cleanEmpName)) score = 70; // Обратное частичное совпадение
-            else if (cleanEmpName.startsWith(cleanUsername)) score = 60; // Начинается с
-            else if (cleanUsername.startsWith(cleanEmpName)) score = 50; // Обратное начинается с
-            
-            return {
-                ...emp,
-                matchScore: score
-            };
-        })
-        .filter(emp => emp.matchScore > 0)
-        .sort((a, b) => b.matchScore - a.matchScore);
-}
-
-// Функция для показа модального окна выбора сотрудника
-function showEmployeeSelectionModal(filename, username, testType, gradedFile, gradedAnswers, fileIndex) {
-    const possibleEmployees = findPossibleEmployees(username);
-    
-    if (possibleEmployees.length === 0) {
-        showError(`Не найдено сотрудников для имени "${username}". Файл не будет сохранен.`);
-        return;
+function validateAndRegisterPlayer(username, testType) {
+    const nicknameRegex = /^[a-zA-Z0-9\s_-]+$/;
+    if (!nicknameRegex.test(username)) {
+        showError("Ник должен содержать только латинские буквы, цифры, пробелы, дефисы и подчеркивания!");
+        return false;
     }
     
-    // Если только один вариант - сохраняем автоматически
-    if (possibleEmployees.length === 1) {
-        const employee = possibleEmployees[0];
-        saveGradedResultsToEmployee(employee, gradedFile, gradedAnswers, fileIndex);
-        return;
+    if (username.length < 2) {
+        showError("Ник должен содержать минимум 2 символа!");
+        return false;
     }
     
-    // Показываем модальное окно выбора
-    const modal = document.getElementById('employeeSelectionModal');
-    const fileNameDisplay = document.getElementById('fileNameDisplay');
-    const employeeList = document.getElementById('employeeSelectionList');
-    const confirmBtn = document.getElementById('confirmEmployeeSelection');
+    let player = playersDatabase.find(p => p.username.toLowerCase() === username.toLowerCase());
     
-    // Сохраняем данные для использования после выбора
-    currentGradingFile = gradedFile;
-    currentGradingAnswers = gradedAnswers;
-    currentFileIndex = fileIndex;
-    
-    fileNameDisplay.textContent = filename;
-    
-    // Очищаем список
-    employeeList.innerHTML = '';
-    
-    // Заполняем список сотрудников
-    possibleEmployees.forEach((employee, index) => {
-        const employeeOption = document.createElement('div');
-        employeeOption.className = 'employee-option';
-        employeeOption.innerHTML = `
-            <input type="radio" name="employeeSelect" id="employee_${index}" value="${employee.id}">
-            <div class="employee-info">
-                <div class="employee-name">${escapeHtml(employee.username)}</div>
-                <div class="employee-position">${employee.position}</div>
-                <div class="employee-stats">
-                    <span>📁 Академия: ${employee.files.academy.length}</span>
-                    <span>🎓 Экзамен: ${employee.files.exam.length}</span>
-                    <span>🔄 Переатт.: ${employee.files.retraining.length}</span>
-                </div>
-            </div>
-        `;
+    if (!player) {
+        const confirmed = confirm(`Вы новый игрок?\n\nВаш ник: ${username}\n\nВНИМАНИЕ: После подтверждения изменить ник будет невозможно!\n\nПодтверждаете правильность ника?`);
         
-        employeeOption.querySelector('input').addEventListener('change', (e) => {
-            // Обновляем выбранного сотрудника
-            document.querySelectorAll('.employee-option').forEach(opt => {
-                opt.classList.remove('selected');
-            });
-            employeeOption.classList.add('selected');
-            confirmBtn.disabled = false;
-        });
-        
-        employeeList.appendChild(employeeOption);
-    });
-    
-    // Обработчики кнопок
-    document.getElementById('cancelEmployeeSelection').onclick = () => {
-        modal.style.display = 'none';
-        showMessage('Сохранение отменено', 'info');
-    };
-    
-    confirmBtn.onclick = () => {
-        const selectedInput = document.querySelector('input[name="employeeSelect"]:checked');
-        if (selectedInput) {
-            const employeeId = selectedInput.value;
-            const employeesData = loadEmployeesData();
-            const selectedEmployee = employeesData[employeeId];
-            
-            if (selectedEmployee) {
-                saveGradedResultsToEmployee(selectedEmployee, currentGradingFile, currentGradingAnswers, currentFileIndex);
-                modal.style.display = 'none';
-            }
+        if (!confirmed) {
+            showError("Пожалуйста, введите правильный никнейм");
+            return false;
         }
-    };
+        
+        player = {
+            id: Date.now().toString(),
+            username: username,
+            registrationDate: new Date().toISOString(),
+            folders: {
+                exam: `${username}_Exam`,
+                retraining: `${username}_Retraining`, 
+                academy: `${username}_Academy`
+            },
+            tests: {
+                exam: [],
+                retraining: [],
+                academy: []
+            }
+        };
+        
+        playersDatabase.push(player);
+        localStorage.setItem('playersDatabase', JSON.stringify(playersDatabase));
+        
+        showMessage(`Игрок ${username} успешно зарегистрирован!`, "success");
+    }
     
-    // Сбрасываем состояние
-    confirmBtn.disabled = true;
-    document.querySelectorAll('.employee-option').forEach(opt => {
-        opt.classList.remove('selected');
-    });
-    
-    // Показываем модальное окно
-    modal.style.display = 'flex';
+    localStorage.setItem('currentPlayer', JSON.stringify(player));
+    return true;
 }
 
-// Функция сохранения результатов выбранному сотруднику
-function saveGradedResultsToEmployee(employee, gradedFile, gradedAnswers, fileIndex) {
-    const username = employee.username;
-    const testType = gradedFile.testType;
-    const score = gradedFile.score;
-    const timeSpent = gradedFile.timeSpent;
-    const correctAnswers = gradedFile.correctAnswers;
-    const totalAnswers = gradedFile.totalAnswers;
-    const passed = gradedFile.passed;
+function getCurrentPlayer() {
+    return JSON.parse(localStorage.getItem('currentPlayer') || 'null');
+}
+
+function updatePlayersDatalist() {
+    const datalist = document.getElementById('playersList');
+    datalist.innerHTML = playersDatabase.map(player => 
+        `<option value="${player.username}">`
+    ).join('');
+}
+
+function saveTestState() {
+    if (test) {
+        localStorage.setItem('currentTest', JSON.stringify({
+            username: test.username,
+            current: test.current,
+            answers: test.answers,
+            shuffledQuestions: test.shuffledQuestions,
+            startTime: test.startTime,
+            blocked: test.blocked,
+            unlockCode: test.unlockCode,
+            testType: test.testType,
+            playerId: test.playerId
+        }));
+    }
+}
+
+function loadTestState() {
+    const saved = localStorage.getItem('currentTest');
+    if (saved) {
+        const savedTest = JSON.parse(saved);
+        test = {
+            username: savedTest.username,
+            current: savedTest.current,
+            answers: savedTest.answers,
+            shuffledQuestions: savedTest.shuffledQuestions,
+            startTime: new Date(savedTest.startTime),
+            blocked: savedTest.blocked,
+            unlockCode: savedTest.unlockCode,
+            testType: savedTest.testType || 'academy',
+            playerId: savedTest.playerId
+        };
+        blocked = savedTest.blocked;
+        currentTestType = savedTest.testType || 'academy';
+        
+        if (blocked) {
+            document.querySelectorAll("input, button").forEach(el => {
+                if (!el.id.includes("unlock") && el.id !== "username" && !el.closest(".tabs")) {
+                    el.disabled = true;
+                }
+            });
+        }
+    }
+}
+
+function clearTestState() {
+    localStorage.removeItem('currentTest');
+    test = null;
+    blocked = false;
+}
+
+function blockTest() {
+    if (blocked || !test) return;
     
-    // Создаем новый отчет с оценкой
-    const testTypeName = getTestTypeName(testType);
-    
-    let reportText = `${testTypeName.toUpperCase()} ВОЕННОЙ ПОЛИЦИИ - РЕЗУЛЬТАТЫ С ОЦЕНКОЙ
-=================================
+    blocked = true;
+    test.blocked = true;
 
-Общая информация:
-----------------
-Имя: ${username}
-Тип теста: ${testTypeName}
-Дата оценки: ${new Date().toLocaleString('ru-RU')}
-Время выполнения: ${timeSpent} минут
-Всего вопросов: ${totalAnswers}
-Правильных ответов: ${correctAnswers}
-Оценка: ${score}%
-Статус: ${passed ? '✅ ПРОЙДЕН' : '❌ НЕ ПРОЙДЕН'}
-
-Ответы с оценкой:
-----------------
-`;
-
-    gradedAnswers.forEach((answer, index) => {
-        reportText += `\n${index + 1}. ${answer.question}\n`;
-        reportText += `Ответ: ${answer.answer}\n`;
-        reportText += `Оценка: ${answer.correct ? '✅ Правильно' : '❌ Неправильно'}\n`;
-        reportText += `---------------------------------\n`;
+    document.querySelectorAll("input, button").forEach(el => {
+        if (!el.id.includes("unlock") && el.id !== "username" && !el.closest(".tabs")) {
+            el.disabled = true;
+        }
     });
 
-    reportText += `\n
-=================================
-Arizona RP | Военная Полиция
-Тест оценен администратором`;
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+    }
 
-    const fileName = `${username}_${testTypeName}_${timeSpent}мин_оценка_${score}%.docx`;
+    if (!test.unlockCode) {
+        test.unlockCode = generateReadableCode();
+    }
+
+    createUnlockFile();
+    saveTestState();
+    renderBlockedScreen();
+}
+
+function createUnlockFile() {
+    const testTypeName = getTestTypeName(test.testType);
+    const unlockContent = `КОД РАЗБЛОКИРОВКИ ТЕСТА
+
+Тип теста: ${testTypeName}
+Имя пользователя: ${test.username}
+Код разблокировки: ${test.unlockCode}
+
+Причина блокировки: Бездействие
+Тест заблокирован: ${new Date().toLocaleString('ru-RU')}
+Прогресс: ${test.current + 1}/${TEST_COUNT} вопросов
+
+Для разблокировки теста обратитесь к администратору.
+
+Arizona RP | Военная Полиция`;
+
+    const encryptedUnlock = CryptoJS.AES.encrypt(unlockContent, AES_KEY).toString();
+    const unlockBlob = new Blob([btoa(encryptedUnlock)], { 
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+    });
+    saveAs(unlockBlob, `${test.username}_${testTypeName}_код_разблокировки.docx`);
+
+    saveUnlockFileToEmployeeFolder(test.username, test.testType, unlockContent);
+}
+
+function saveUnlockFileToEmployeeFolder(username, testType, unlockContent) {
+    const testTypeName = getTestTypeName(testType);
+    const fileName = `${username}_${testTypeName}_разблокировка_${new Date().toLocaleDateString('ru-RU')}.docx`;
     
-    // Сохраняем в папку сотрудника
     const success = addFileToEmployeeFolder(
         username,
         testType,
         fileName,
-        reportText
+        unlockContent
     );
     
     if (success) {
-        showMessage(`Оценка сохранена! Файл "${fileName}" сохранен в папку сотрудника ${username}`, "success");
-        
-        // Обновляем статистику
-        const savedFiles = JSON.parse(localStorage.getItem("adminFiles") || "[]");
-        savedFiles[fileIndex].username = username;
-        localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
-        
-        const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
-        const filteredStatistics = statistics.filter(stat => 
-            !(stat.username === username && stat.testType === testType && Math.abs(new Date(stat.date) - new Date()) < 60000)
-        );
-        
-        filteredStatistics.push({
-            username: username,
-            testType: testType,
-            score: score,
-            timeSpent: timeSpent,
-            correctAnswers: correctAnswers,
-            totalAnswers: totalAnswers,
-            passed: passed,
-            date: new Date().toISOString(),
-            graded: true
-        });
-        
-        localStorage.setItem("testStatistics", JSON.stringify(filteredStatistics));
-        
-        // Закрываем панель оценки
-        const gradingPanel = document.getElementById("gradingPanel");
-        if (gradingPanel) {
-            gradingPanel.style.display = "none";
-        }
-        
-        renderFiles();
+        console.log(`✅ Файл разблокировки сохранен в папку ${testType} сотрудника ${username}`);
     } else {
-        showError(`Не удалось сохранить файл в папку сотрудника ${username}`);
+        console.error(`❌ Не удалось сохранить файл разблокировки для сотрудника ${username}`);
     }
 }
 
-// --- АДМИН-ПАНЕЛЬ ---
-function renderAdmin() {
-    const area = document.getElementById("adminArea");
-    const employeesData = loadEmployeesData();
-    
-    // Подсчет статистики
-    const totalPositions = FIXED_EMPLOYEE_STRUCTURE.length;
-    const occupiedPositions = Object.values(employeesData).filter(emp => emp.username !== 'Вакантно').length;
-    const vacantPositions = totalPositions - occupiedPositions;
-    
-    // Подсчет по типам
-    const typeCounts = {
-        curator: 0,
-        senior_officer: 0,
-        officer: 0,
-        cadet: 0
-    };
-    
-    Object.values(employeesData).forEach(emp => {
-        if (emp.username !== 'Вакантно') {
-            typeCounts[emp.type]++;
-        }
-    });
-
-    const stats = calculateStats();
-    
+function renderBlockedScreen() {
+    const testTypeName = getTestTypeName(test.testType);
+    const area = document.getElementById("mainArea");
     area.innerHTML = `
-        <div class="admin-container">
-            <div class="admin-layout">
-                <!-- ЛЕВАЯ КОЛОНКА - СОТРУДНИКИ -->
-                <div class="admin-employees-sidebar">
-                    <h3>👥 Состав Военной Полиции</h3>
-                    
-                    <!-- СТАТИСТИКА СОТРУДНИКОВ -->
-                    <div class="employees-stats">
-                        <div class="employee-stat">
-                            <div class="stat-value">${totalPositions}</div>
-                            <div class="stat-label">Всего мест</div>
-                        </div>
-                        <div class="employee-stat">
-                            <div class="stat-value">${occupiedPositions}</div>
-                            <div class="stat-label">Занято</div>
-                        </div>
-                        <div class="employee-stat">
-                            <div class="stat-value">${vacantPositions}</div>
-                            <div class="stat-label">Свободно</div>
-                        </div>
-                    </div>
-                    
-                    <!-- ФИКСИРОВАННАЯ СЕТКА СОТРУДНИКОВ -->
-                    ${renderFixedEmployees(employeesData)}
-                    
-                    <div style="margin-top: 15px; font-size: 0.9em; color: var(--text-muted);">
-                        💡 Фиксированные сотрудники не могут быть изменены. Редактирование доступно только для вакантных мест.
-                    </div>
-                </div>
-
-                <!-- ПРАВАЯ КОЛОНКА - ОСНОВНОЙ КОНТЕНТ -->
-                <div class="admin-main-panel">
-                    <h2>🔧 Админ-панель</h2>
-                    <div style="margin-bottom: 15px; display: flex; justify-content: flex-end; align-items: center;">
-                        <button class="btn small ghost" id="logoutAdminBtn">🚪 Выйти</button>
-                    </div>
-                    
-                    <!-- БЛОК СТАТИСТИКИ -->
-                    <div style="margin-bottom: 30px;">
-                        <h3>📈 Статистика тестирования</h3>
-                        
-                        <!-- ОСНОВНЫЕ МЕТРИКИ -->
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-number">${stats.totalTests}</div>
-                                <div class="stat-label">Всего тестов</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number">${stats.averageScore}%</div>
-                                <div class="stat-label">Средний балл</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number">${stats.passRate}%</div>
-                                <div class="stat-label">Проходимость</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number">${stats.averageTime}</div>
-                                <div class="stat-label">Среднее время</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Дополнительная статистика -->
-                        <div class="extended-stats">
-                            <div class="stat-row">
-                                <div class="stat-item">
-                                    <span class="stat-title">📊 Баллы:</span>
-                                    <div class="stat-values">
-                                        <span>Мин: <strong>${stats.minScore}%</strong></span>
-                                        <span>Макс: <strong>${stats.maxScore}%</strong></span>
-                                    </div>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-title">⏱️ Время:</span>
-                                    <div class="stat-values">
-                                        <span>Мин: <strong>${stats.minTime}</strong></span>
-                                        <span>Макс: <strong>${stats.maxTime}</strong></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- ТИПЫ ТЕСТОВ -->
-                        <div class="test-types">
-                            <div class="type-card exam">
-                                <div class="type-icon">🎓</div>
-                                <div class="type-info">
-                                    <div class="type-count">${stats.examCount}</div>
-                                    <div class="type-label">Экзамены</div>
-                                </div>
-                            </div>
-                            <div class="type-card academy">
-                                <div class="type-icon">📚</div>
-                                <div class="type-info">
-                                    <div class="type-count">${stats.academyCount}</div>
-                                    <div class="type-label">Академия</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- ДЕТАЛЬНАЯ СТАТИСТИКА -->
-                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div class="stat-section">
-                                <h4>📊 Распределение оценок</h4>
-                                <div class="grade-distribution">
-                                    ${renderGradeDistribution(stats.gradeDistribution)}
-                                </div>
-                            </div>
-                            <div class="stat-section">
-                                <h4>🎯 Последние результаты</h4>
-                                <div class="recent-results">
-                                    ${renderRecentResults(stats.recentResults)}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- РЕЙТИНГИ ТЕСТОВ -->
-                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div class="stat-section">
-                                <h4>📋 Рейтинг экзаменов</h4>
-                                <div class="ranking-list">
-                                    ${renderRanking(stats.examRanking, 'exam')}
-                                </div>
-                            </div>
-                            
-                            <div class="stat-section">
-                                <h4>📋 Рейтинг академии</h4>
-                                <div class="ranking-list">
-                                    ${renderRanking(stats.academyRanking, 'academy')}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- КНОПКА ЭКСПОРТА -->
-                        <div style="margin-top: 20px;">
-                            <button class="btn" id="exportStatsBtn">📊 Экспорт статистики</button>
-                        </div>
-                    </div>
-                    
-                    <!-- ТЕСТЫ, ОЖИДАЮЩИЕ ОЦЕНКИ -->
-                    <div style="margin-bottom: 30px;">
-                        <h3>⏳ Тесты, ожидающие оценку</h3>
-                        <div class="pending-tests">
-                            ${renderPendingTests()}
-                        </div>
-                    </div>
-                    
-                    <!-- УПРАВЛЕНИЕ ИГРОКАМИ -->
-                    <div style="margin-bottom: 30px;">
-                        <h3>👥 Управление игроками</h3>
-                        <div class="players-management">
-                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                                <input type="text" id="searchPlayer" placeholder="Поиск игрока..." style="flex: 1;">
-                                <button class="btn" id="searchPlayerBtn">🔍 Поиск</button>
-                            </div>
-                            <div class="players-list">
-                                ${renderPlayersList()}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- ЗАГРУЗКА И ПРОВЕРКА РЕЗУЛЬТАТОВ -->
-                    <div style="margin-bottom: 30px;">
-                        <h3>📁 Загрузка и проверка результатов</h3>
-                        <p>Загрузите файлы результатов тестов для проверки.</p>
-                        <p><strong>Важно:</strong> Файлы автоматически сохраняются в папки сотрудников только после оценки!</p>
-                        <p>Система определит имя сотрудника из названия файла (формат: <code>Имя_ТипТеста_время_результаты.docx</code>)</p>
-                        
-                        <input type="file" id="fileInput" multiple accept=".docx,.txt" style="display: none;">
-                        <button class="btn" id="chooseFileBtn">📁 Выбрать файлы</button>
-                        
-                        <div style="margin-top: 20px;">
-                            <h4>Загруженные файлы:</h4>
-                            <ul id="fileList"></ul>
-                        </div>
-                        
-                        <div id="fileViewer" class="report" style="display: none; margin-top: 20px;"></div>
-                        
-                        <div id="gradingPanel" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                            <h4>📝 Оценка ответов</h4>
-                            <div id="gradingStats" class="grading-stats"></div>
-                            <div id="answersList"></div>
-                            <div style="margin-top: 15px;">
-                                <button class="btn" id="saveGradingBtn">💾 Сохранить оценку</button>
-                                <button class="btn ghost" id="closeGradingBtn">❌ Закрыть</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-                        <button class="btn ghost" id="clearAllBtn">🗑️ Удалить все записи</button>
-                    </div>
-                </div>
+        <div class="blocked-note">
+            <h2>🚫 ${testTypeName} заблокирован за бездействие!</h2>
+            <p>Система зафиксировала отсутствие активности более 20 секунд.</p>
+            <p>Файл с кодом разблокировки был скачан и сохранен в вашу папку.</p>
+            <p>Отправьте файл <strong>${test.username}_${testTypeName}_код_разблокировки.docx</strong> администратору.</p>
+            
+            <div style="margin: 20px 0;">
+                <button class="btn ghost" id="resendCodeBtn">
+                    📧 Получить код повторно
+                </button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <input type="text" id="unlockCodeInput" placeholder="Введите код от администратора" style="margin: 10px 0; width: 100%;">
+                <button class="btn" id="submitUnlockBtn">Разблокировать тест</button>
             </div>
         </div>
     `;
 
-    // Обработчики событий для админ-панели
-    document.getElementById("logoutAdminBtn").addEventListener("click", logoutAdmin);
+    document.getElementById("resendCodeBtn").addEventListener("click", () => {
+        createUnlockFile();
+        showMessage("Файл с кодом разблокировки отправлен на скачивание!", "success");
+    });
+
+    document.getElementById("submitUnlockBtn").addEventListener("click", () => {
+        const enteredCode = document.getElementById("unlockCodeInput").value.trim().toUpperCase();
+        if (enteredCode === test.unlockCode) {
+            blocked = false;
+            test.blocked = false;
+            document.querySelectorAll("input, button").forEach(el => el.disabled = false);
+            saveTestState();
+            showMessage("Тест успешно разблокирован!", "success");
+            resetInactivityTimer();
+            renderCurrentTest();
+        } else {
+            showError("Неверный код разблокировки!");
+        }
+    });
+}
+
+function unblockTest() {
+    const code = document.getElementById("username").value.trim().toUpperCase();
+    if (!test) {
+        showError("Нет активного теста для разблокировки!");
+        return;
+    }
     
-    // Инициализация остальных компонентов админ-панели
-    initAdminPanel();
-    initEmployeesManagement();
+    if (code === test.unlockCode) {
+        blocked = false;
+        test.blocked = false;
+        document.querySelectorAll("input, button").forEach(el => el.disabled = false);
+        saveTestState();
+        showMessage("Тест успешно разблокирован!", "success");
+        resetInactivityTimer();
+        renderCurrentTest();
+    } else {
+        showError("Неверный код разблокировки!");
+    }
 }
 
-// Рендер фиксированных сотрудников с улучшенным дизайном папок
-function renderFixedEmployees(employeesData) {
-    return `
-        <div class="employees-composition">
-            ${FIXED_EMPLOYEE_STRUCTURE.map(empTemplate => {
-                const employee = employeesData[empTemplate.id];
-                const isVacant = employee.username === 'Вакантно';
-                const isFixedEmployee = FIXED_EMPLOYEE_STRUCTURE.find(fixed => 
-                    fixed.id === empTemplate.id && fixed.username !== 'Вакантно'
-                );
-                
-                let typeClass = '';
-                if (employee.type === 'curator' || employee.type === 'senior_officer') {
-                    typeClass = 'employee-high-rank';
-                } else {
-                    typeClass = 'employee-standard';
-                }
-                
-                // Подсчет файлов по типам
-                const academyFiles = employee.files.academy || [];
-                const examFiles = employee.files.exam || [];
-                const retrainingFiles = employee.files.retraining || [];
-                
-                return `
-                    <div class="employee-slot ${typeClass}" data-employee-id="${employee.id}">
-                        <div class="employee-header">
-                            <div class="employee-position">${employee.position}</div>
-                            <div class="employee-status ${isVacant ? 'status-vacant' : 'status-occupied'}">
-                                ${isVacant ? '🔄 Вакантно' : '✅ ' + employee.username}
-                            </div>
-                        </div>
-                        
-                        <div class="employee-content">
-                            ${isFixedEmployee && !isVacant ? `
-                            ` : `
-                                <!-- Для вакантных мест - поля редактирования -->
-                                <input type="text" 
-                                       class="employee-username" 
-                                       value="" 
-                                       placeholder="Введите ник сотрудника"
-                                       data-employee-id="${employee.id}">
-                                
-                                <div class="employee-actions">
-                                    <button class="btn small save-employee-btn" data-employee-id="${employee.id}">
-                                        💾 Сохранить
-                                    </button>
-                                    <button class="btn small ghost clear-employee-btn" data-employee-id="${employee.id}" ${isVacant ? 'style="display: none;"' : ''}>
-                                        🗑️ Очистить
-                                    </button>
-                                </div>
-                            `}
-                            
-                            ${!isVacant ? `
-                                <div class="employee-folders">
-                                    <!-- Папка Академия -->
-                                    <div class="folder-card ${getFolderState(academyFiles)}" 
-                                         data-employee-id="${employee.id}" 
-                                         data-folder-type="academy">
-                                        ${getFolderBadges(academyFiles)}
-                                        <div class="folder-icon">${getFolderIcon('academy')}</div>
-                                        <div class="folder-label">${getFolderLabel('academy')}</div>
-                                        <div class="folder-stats">
-                                            <div class="file-count">${academyFiles.length} файлов</div>
-                                            ${getFolderStatus(academyFiles, getFolderStats(academyFiles))}
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Папка Экзамен -->
-                                    <div class="folder-card ${getFolderState(examFiles)}" 
-                                         data-employee-id="${employee.id}" 
-                                         data-folder-type="exam">
-                                        ${getFolderBadges(examFiles)}
-                                        <div class="folder-icon">${getFolderIcon('exam')}</div>
-                                        <div class="folder-label">${getFolderLabel('exam')}</div>
-                                        <div class="folder-stats">
-                                            <div class="file-count">${examFiles.length} файлов</div>
-                                            ${getFolderStatus(examFiles, getFolderStats(examFiles))}
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Папка Переаттестация -->
-                                    <div class="folder-card ${getFolderState(retrainingFiles)}" 
-                                         data-employee-id="${employee.id}" 
-                                         data-folder-type="retraining">
-                                        ${getFolderBadges(retrainingFiles)}
-                                        <div class="folder-icon">${getFolderIcon('retraining')}</div>
-                                        <div class="folder-label">${getFolderLabel('retraining')}</div>
-                                        <div class="folder-stats">
-                                            <div class="file-count">${retrainingFiles.length} файлов</div>
-                                            ${getFolderStatus(retrainingFiles, getFolderStats(retrainingFiles))}
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : `
-                                <div class="employee-empty">
-                                    <span class="empty-text">Должность свободна</span>
-                                </div>
-                            `}
-                        </div>
-                    </div>
-                `;
-            }).join('')}
-        </div>
-    `;
+function generateReadableCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
 }
 
-// Инициализация управления сотрудниками
-function initEmployeesManagement() {
-    // Сохранение сотрудника - только для вакантных мест
-    document.querySelectorAll('.save-employee-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const employeeId = e.target.dataset.employeeId;
-            const input = document.querySelector(`.employee-username[data-employee-id="${employeeId}"]`);
+function initUI() {
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+    }
+    
+    loadTestState();
+    updatePlayersDatalist();
+    
+    document.addEventListener('mousemove', trackActivity);
+    document.addEventListener('mousedown', trackActivity);
+    document.addEventListener('keypress', trackActivity);
+    document.addEventListener('keydown', trackActivity);
+    
+    document.querySelectorAll(".tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+            trackActivity();
+            const tabName = tab.dataset.tab;
             
-            // Проверяем, что это поле ввода существует (только у вакантных мест)
-            if (input) {
-                const username = input.value.trim();
-                
-                if (!username) {
-                    showError('Введите ник сотрудника!');
+            document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            
+            const contentArea = document.getElementById("contentArea");
+            if (tabName === "admin") {
+                contentArea.classList.add("admin-active");
+                document.getElementById("mainArea").style.display = "none";
+                document.getElementById("adminArea").style.display = "block";
+                if (!authenticateAdmin()) {
+                    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+                    document.querySelector(".tab[data-tab='academy']").classList.add("active");
+                    document.getElementById("mainArea").style.display = "block";
+                    document.getElementById("adminArea").style.display = "none";
+                    contentArea.classList.remove("admin-active");
+                    currentTestType = 'academy';
+                    renderAcademy();
                     return;
                 }
-                
-                saveEmployee(employeeId, username);
-            }
-        });
-    });
-    
-    // Очистка сотрудника - только для нефиксированных
-    document.querySelectorAll('.clear-employee-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const employeeId = e.target.dataset.employeeId;
-            clearEmployee(employeeId);
-        });
-    });
-    
-    // Сохранение по Enter - только для вакантных мест
-    document.querySelectorAll('.employee-username').forEach(input => {
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const employeeId = e.target.dataset.employeeId;
-                const username = e.target.value.trim();
-                
-                if (username) {
-                    saveEmployee(employeeId, username);
-                }
-            }
-        });
-    });
-    
-    // Обработчики для папок - ВСЕ папки, включая пустые
-    document.querySelectorAll('.folder-card').forEach(folder => {
-        folder.addEventListener('click', (e) => {
-            const employeeId = e.currentTarget.dataset.employeeId;
-            const folderType = e.currentTarget.dataset.folderType;
-            openFolderModal(employeeId, folderType);
-        });
-    });
-}
-
-// Сохранение сотрудника
-function saveEmployee(employeeId, username) {
-    const employeesData = loadEmployeesData();
-    const employee = employeesData[employeeId];
-    
-    // Проверка на фиксированного сотрудника
-    const fixedEmployee = FIXED_EMPLOYEE_STRUCTURE.find(emp => 
-        emp.id === employeeId && emp.username !== 'Вакантно'
-    );
-    
-    if (fixedEmployee && fixedEmployee.username !== 'Вакантно') {
-        showError(`Сотрудник "${fixedEmployee.username}" является фиксированным и не может быть изменен!`);
-        return;
-    }
-    
-    // Проверка на уникальность
-    const existingEmployee = getEmployeeByUsername(username, employeesData);
-    if (existingEmployee && existingEmployee.id !== employeeId) {
-        showError(`Сотрудник "${username}" уже назначен на должность "${existingEmployee.position}"!`);
-        return;
-    }
-    
-    employee.username = username;
-    
-    // Обновляем названия папок
-    employee.folders = {
-        academy: `${username}_Академия`,
-        exam: `${username}_Экзамен`,
-        retraining: `${username}_Переаттестация`
-    };
-    
-    saveEmployeesData(employeesData);
-    showMessage(`Сотрудник "${username}" назначен на должность "${employee.position}"`, 'success');
-    
-    renderAdmin();
-}
-
-// Очистка сотрудника
-function clearEmployee(employeeId) {
-    const employeesData = loadEmployeesData();
-    const employee = employeesData[employeeId];
-    const oldUsername = employee.username;
-    
-    // Проверка на фиксированного сотрудника
-    const fixedEmployee = FIXED_EMPLOYEE_STRUCTURE.find(emp => 
-        emp.id === employeeId && emp.username !== 'Вакантно'
-    );
-    
-    if (fixedEmployee && fixedEmployee.username !== 'Вакантно') {
-        showError(`Сотрудник "${fixedEmployee.username}" является фиксированным и не может быть удален!`);
-        return;
-    }
-    
-    if (oldUsername === 'Вакантно') {
-        showError('Эта должность уже свободна!');
-        return;
-    }
-    
-    if (!confirm(`Освободить должность "${employee.position}" от сотрудника "${oldUsername}"?`)) {
-        return;
-    }
-    
-    employee.username = 'Вакантно';
-    
-    // Сбрасываем названия папок
-    employee.folders = {
-        academy: `${employee.position}_Академия`,
-        exam: `${employee.position}_Экзамен`,
-        retraining: `${employee.position}_Переаттестация`
-    };
-    
-    saveEmployeesData(employeesData);
-    showMessage(`Должность "${employee.position}" освобождена`, 'success');
-    
-    renderAdmin();
-}
-
-// Функция для открытия модального окна папки с улучшенным дизайном
-function openFolderModal(employeeId, folderType) {
-    const employeesData = loadEmployeesData();
-    const employee = employeesData[employeeId];
-    
-    if (!employee) return;
-    
-    const folderNames = {
-        academy: 'Академия',
-        exam: 'Экзамен', 
-        retraining: 'Переаттестация'
-    };
-    
-    const files = employee.files[folderType] || [];
-    const testFiles = files.filter(f => !f.isUnlockFile);
-    const unlockFiles = files.filter(f => f.isUnlockFile);
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>📁 ${employee.username} - ${folderNames[folderType]}</h2>
-            <div class="small" style="margin-bottom: 15px; color: var(--text-muted);">
-                📝 Файлы появляются здесь после оценки администратором или блокировки теста
-            </div>
-            
-            <!-- КНОПКА ЗАГРУЗКИ ФАЙЛА -->
-            <div style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                <h4 style="margin-top: 0; color: var(--accent);">📤 Загрузить файл в папку</h4>
-                <input type="file" id="folderFileInput" accept=".docx,.txt,.pdf" style="display: none;">
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn small" id="chooseFolderFileBtn">📁 Выбрать файл</button>
-                    <span id="selectedFileName" style="color: var(--text-muted); font-size: 0.9em;">Файл не выбран</span>
-                </div>
-                <div style="margin-top: 10px;">
-                    <button class="btn small" id="uploadToFolderBtn" disabled>⬆️ Загрузить в папку</button>
-                </div>
-            </div>
-            
-            <div class="files-list">
-                <!-- Файлы разблокировки -->
-                ${unlockFiles.length > 0 ? `
-                    <div class="file-section">
-                        <div class="file-section-title">
-                            <span>🔓</span>
-                            <span>Файлы разблокировки (${unlockFiles.length})</span>
-                        </div>
-                        ${unlockFiles.map(file => `
-                            <div class="file-item">
-                                <div class="file-info">
-                                    <div class="file-name">
-                                        <span>🔓</span>
-                                        ${escapeHtml(file.name)}
-                                    </div>
-                                    <div class="file-date">${file.date}</div>
-                                    <div class="file-score" style="color: var(--warning);">Файл разблокировки</div>
-                                </div>
-                                <div class="file-actions">
-                                    <button class="btn small download-file-btn" 
-                                            data-file-content="${btoa(unescape(encodeURIComponent(file.content)))}"
-                                            data-file-name="${file.name}">
-                                        📥 Скачать
-                                    </button>
-                                    <button class="btn small ghost delete-file-btn" 
-                                            data-file-id="${file.id}">
-                                        🗑️ Удалить
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-                
-                <!-- Результаты тестов -->
-                ${testFiles.length > 0 ? `
-                    <div class="file-section">
-                        <div class="file-section-title">
-                            <span>📝</span>
-                            <span>Результаты тестов (${testFiles.length})</span>
-                        </div>
-                        ${testFiles.map(file => `
-                            <div class="file-item">
-                                <div class="file-info">
-                                    <div class="file-name">
-                                        ${file.graded ? '✅' : '⏳'} ${escapeHtml(file.name)}
-                                    </div>
-                                    <div class="file-date">${file.date}</div>
-                                    ${file.graded ? `
-                                        <div class="file-score ${file.score >= 70 ? 'score-good' : 'score-bad'}">
-                                            Оценка: ${file.score}%
-                                        </div>
-                                    ` : `
-                                        <div class="file-score" style="color: var(--warning);">
-                                            Ожидает оценки
-                                        </div>
-                                    `}
-                                </div>
-                                <div class="file-actions">
-                                    <button class="btn small download-file-btn" 
-                                            data-file-content="${btoa(unescape(encodeURIComponent(file.content)))}"
-                                            data-file-name="${file.name}">
-                                        📥 Скачать
-                                    </button>
-                                    <button class="btn small ghost delete-file-btn" 
-                                            data-file-id="${file.id}">
-                                        🗑️ Удалить
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-                
-                ${files.length === 0 ? `
-                    <div class="no-files-message">
-                        <p>📁 В папке пока нет файлов</p>
-                        <p class="small">Вы можете загрузить файлы с помощью формы выше</p>
-                    </div>
-                ` : ''}
-            </div>
-            
-            <div class="modal-buttons">
-                <button class="btn ghost" id="closeFolderModal">Закрыть</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Обработчики для модального окна
-    document.getElementById('closeFolderModal').addEventListener('click', () => {
-        modal.remove();
-    });
-    
-    // Обработчики для загрузки файлов в папку
-    const folderFileInput = document.getElementById('folderFileInput');
-    const chooseFolderFileBtn = document.getElementById('chooseFolderFileBtn');
-    const uploadToFolderBtn = document.getElementById('uploadToFolderBtn');
-    const selectedFileName = document.getElementById('selectedFileName');
-    
-    chooseFolderFileBtn.addEventListener('click', () => folderFileInput.click());
-    
-    folderFileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            const file = e.target.files[0];
-            selectedFileName.textContent = file.name;
-            uploadToFolderBtn.disabled = false;
-        } else {
-            selectedFileName.textContent = 'Файл не выбран';
-            uploadToFolderBtn.disabled = true;
-        }
-    });
-    
-    uploadToFolderBtn.addEventListener('click', () => {
-        const file = folderFileInput.files[0];
-        if (!file) return;
-        
-        uploadFileToEmployeeFolder(file, employeeId, folderType, modal);
-    });
-    
-    // Скачивание файлов
-    document.querySelectorAll('.download-file-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const fileContent = e.target.dataset.fileContent;
-            const fileName = e.target.dataset.fileName;
-            
-            try {
-                const content = decodeURIComponent(escape(atob(fileContent)));
-                const blob = new Blob([content], { 
-                    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-                });
-                saveAs(blob, fileName);
-                showMessage('Файл скачан', 'success');
-            } catch (error) {
-                showError('Ошибка при скачивании файла');
-            }
-        });
-    });
-    
-    // Удаление файлов
-    document.querySelectorAll('.delete-file-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const fileId = e.target.dataset.fileId;
-            if (confirm('Удалить этот файл?')) {
-                deleteEmployeeFile(employeeId, folderType, fileId);
-                modal.remove();
                 renderAdmin();
+            } else {
+                contentArea.classList.remove("admin-active");
+                document.getElementById("mainArea").style.display = "block";
+                document.getElementById("adminArea").style.display = "none";
+                currentTestType = tabName;
+                renderCurrentTest();
             }
         });
     });
+
+    document.getElementById("startBtn").addEventListener("click", showDisclaimer);
+    document.getElementById("finishBtn").addEventListener("click", finishTestManually);
+    document.getElementById("unlockBtn").addEventListener("click", unblockTest);
+
+    document.getElementById("unlockBtn").style.display = "none";
+
+    setInterval(() => {
+        if (test && !test.blocked) {
+            const timeSinceLastActivity = Date.now() - lastActivityTime;
+            if (timeSinceLastActivity >= INACTIVITY_TIMEOUT - 5000) {
+                showInactivityWarning();
+            }
+        }
+    }, 1000);
+
+    renderAcademy();
 }
 
-// Удаление файла сотрудника
-function deleteEmployeeFile(employeeId, folderType, fileId) {
-    const employeesData = loadEmployeesData();
-    const employee = employeesData[employeeId];
+function authenticateAdmin() {
+    if (isAdminAuthenticated) {
+        return true;
+    }
     
-    if (!employee || !employee.files[folderType]) return;
-    
-    employee.files[folderType] = employee.files[folderType].filter(file => file.id !== fileId);
-    saveEmployeesData(employeesData);
-    
-    showMessage('Файл удален', 'success');
+    const pwd = prompt("Введите пароль для Админки:");
+    if (pwd === ADMIN_PASSWORD) {
+        isAdminAuthenticated = true;
+        localStorage.setItem('adminAuthenticated', 'true');
+        return true;
+    } else {
+        alert("Неверный пароль!");
+        return false;
+    }
 }
 
-// --- ФУНКЦИИ АДМИН-ПАНЕЛИ ---
-function initAdminPanel() {
-    const fileInput = document.getElementById("fileInput");
-    const chooseFileBtn = document.getElementById("chooseFileBtn");
-    
-    if (chooseFileBtn) {
-        chooseFileBtn.addEventListener("click", () => fileInput.click());
-    }
-    if (fileInput) {
-        fileInput.addEventListener("change", handleFileUpload);
-    }
-    
-    // Добавляем обработчики для кнопок админ-панели
-    const exportStatsBtn = document.getElementById("exportStatsBtn");
-    if (exportStatsBtn) {
-        exportStatsBtn.addEventListener("click", exportStatistics);
-    }
-    
-    const searchPlayerBtn = document.getElementById("searchPlayerBtn");
-    if (searchPlayerBtn) {
-        searchPlayerBtn.addEventListener("click", searchPlayers);
-    }
-    
-    const clearAllBtn = document.getElementById("clearAllBtn");
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener("click", clearAllData);
-    }
-    
-    renderFiles();
+function logoutAdmin() {
+    isAdminAuthenticated = false;
+    localStorage.setItem('adminAuthenticated', 'false');
+    showMessage("Выход из админ-панели выполнен", "info");
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelector(".tab[data-tab='academy']").classList.add("active");
+    currentTestType = 'academy';
+    renderAcademy();
 }
 
+// Функции админ-панели
 function handleFileUpload(e) {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
@@ -2143,6 +1394,9 @@ function handleFileUpload(e) {
         const reader = new FileReader();
         reader.onload = (evt) => {
             const base64 = arrayBufferToBase64(evt.target.result);
+            
+            const extractedUsername = extractUsernameFromFilename(file.name);
+            const testType = extractTestTypeFromFilename(file.name);
             
             const existingFileIndex = savedFiles.findIndex(f => f.name === file.name);
             if (existingFileIndex !== -1) {
@@ -2165,9 +1419,11 @@ function handleFileUpload(e) {
                     score: 0,
                     correctAnswers: 0,
                     totalAnswers: 0,
-                    gradingData: null
+                    gradingData: null,
+                    username: extractedUsername,
+                    testType: testType
                 });
-                showMessage(`Файл "${file.name}" загружен!`, "success");
+                showMessage(`Файл "${file.name}" загружен! ${extractedUsername ? `Определен сотрудник: ${extractedUsername}` : 'Сотрудник не определен'}`, "success");
             }
             
             localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
@@ -2177,6 +1433,20 @@ function handleFileUpload(e) {
     });
     
     e.target.value = "";
+}
+
+function initAdminPanel() {
+    const fileInput = document.getElementById("fileInput");
+    const chooseFileBtn = document.getElementById("chooseFileBtn");
+    
+    if (chooseFileBtn) {
+        chooseFileBtn.addEventListener("click", () => fileInput.click());
+    }
+    if (fileInput) {
+        fileInput.addEventListener("change", handleFileUpload);
+    }
+    
+    renderFiles();
 }
 
 function renderFiles() {
@@ -2216,7 +1486,6 @@ function renderFiles() {
         </li>
     `).join("");
 
-    // Обработчики для файлов
     document.querySelectorAll(".pass-checkbox").forEach(cb => {
         cb.addEventListener("change", (e) => {
             const index = parseInt(e.target.dataset.index);
@@ -2245,6 +1514,126 @@ function renderFiles() {
             deleteFile(index);
         });
     });
+}
+
+// ВАЖНО: Изменил панель оценки на простой блок, как в старом коде
+function openGradingPanel(file, fileIndex) {
+    const gradingPanel = document.getElementById("gradingPanel");
+    const gradingStats = document.getElementById("gradingStats");
+    const answersList = document.getElementById("answersList");
+    
+    if (!gradingPanel || !gradingStats || !answersList) return;
+    
+    try {
+        const storedBase64 = file.content;
+        const fileText = atob(storedBase64);
+        let decryptedPlain = null;
+        
+        try {
+            const encrypted = atob(fileText);
+            decryptedPlain = CryptoJS.AES.decrypt(encrypted, AES_KEY).toString(CryptoJS.enc.Utf8);
+        } catch (err) {
+            decryptedPlain = null;
+        }
+
+        if (decryptedPlain) {
+            let answers = file.gradingData || parseAnswersFromReport(decryptedPlain);
+            const correctCount = answers.filter(a => a.correct).length;
+            const totalCount = answers.length;
+            const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+            
+            gradingStats.innerHTML = `
+                Правильных ответов: ${correctCount}/${totalCount} | Оценка: ${score}%
+                ${file.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
+            `;
+            
+            // ИСПОЛЬЗУЕМ УЛУЧШЕННУЮ ФУНКЦИЮ ДЛЯ ИЗВЛЕЧЕНИЯ ПОЛНОГО ИМЕНИ
+            const extractedUsername = extractUsernameFromFilename(file.name);
+            const testType = extractTestTypeFromFilename(file.name);
+            
+            answersList.innerHTML = answers.map((answer, index) => `
+                <div class="answer-item ${answer.correct ? 'correct' : 'incorrect'}">
+                    <div><strong>Вопрос ${index + 1}:</strong> ${escapeHtml(answer.question)}</div>
+                    <div style="margin: 5px 0;"><strong>Ответ:</strong> ${escapeHtml(answer.answer)}</div>
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                        <input type="checkbox" class="correct-checkbox" data-index="${index}" ${answer.correct ? 'checked' : ''}>
+                        <span>✅ Правильный ответ</span>
+                    </label>
+                </div>
+            `).join('') + `
+                <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <h4>👤 Определение сотрудника</h4>
+                    <p>Автоматически определено: <strong>${extractedUsername || "Не определено"}</strong></p>
+                    <p>Тип теста: <strong>${getTestTypeName(testType)}</strong></p>
+                    <div style="margin-top: 10px;">
+                        <label style="display: block; margin-bottom: 5px;">Введите имя сотрудника вручную:</label>
+                        <input type="text" id="manualUsernameInput" 
+                               style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white;"
+                               placeholder="Введите ник сотрудника"
+                               value="${extractedUsername || ''}">
+                    </div>
+                </div>
+            `;
+
+            document.querySelectorAll('.correct-checkbox').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    answers[index].correct = e.target.checked;
+                    
+                    const newCorrectCount = answers.filter(a => a.correct).length;
+                    const newScore = Math.round((newCorrectCount / totalCount) * 100);
+                    gradingStats.innerHTML = `
+                        Правильных ответов: ${newCorrectCount}/${totalCount} | Оценка: ${newScore}%
+                        ${file.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
+                    `;
+                    
+                    const answerItem = e.target.closest('.answer-item');
+                    if (e.target.checked) {
+                        answerItem.classList.add('correct');
+                        answerItem.classList.remove('incorrect');
+                    } else {
+                        answerItem.classList.add('incorrect');
+                        answerItem.classList.remove('correct');
+                    }
+                });
+            });
+
+            const saveGradingBtn = document.getElementById("saveGradingBtn");
+            const closeGradingBtn = document.getElementById("closeGradingBtn");
+            
+            if (saveGradingBtn) {
+                saveGradingBtn.onclick = () => {
+                    file.gradingData = answers;
+                    file.correctAnswers = answers.filter(a => a.correct).length;
+                    file.totalAnswers = answers.length;
+                    file.score = Math.round((file.correctAnswers / file.totalAnswers) * 100);
+                    file.passed = file.score >= 70;
+                    file.testType = testType;
+                    
+                    const manualUsername = document.getElementById('manualUsernameInput')?.value.trim();
+                    const username = manualUsername || extractedUsername;
+                    
+                    if (!username) {
+                        showError("Введите имя сотрудника!");
+                        return;
+                    }
+                    
+                    showEmployeeSelectionModal(file.name, username, testType, file, answers, fileIndex);
+                };
+            }
+            
+            if (closeGradingBtn) {
+                closeGradingBtn.onclick = () => {
+                    gradingPanel.style.display = 'none';
+                };
+            }
+
+            // Показываем как простой блок, не как модальное окно
+            gradingPanel.style.display = 'block';
+        }
+    } catch (error) {
+        showError("Ошибка при загрузке ответов для оценки");
+    }
 }
 
 function openFileViewer(file) {
@@ -2297,136 +1686,6 @@ function openFileViewer(file) {
     }
 }
 
-function openGradingPanel(file, fileIndex) {
-    const gradingPanel = document.getElementById("gradingPanel");
-    const gradingStats = document.getElementById("gradingStats");
-    const answersList = document.getElementById("answersList");
-    
-    if (!gradingPanel || !gradingStats || !answersList) return;
-    
-    try {
-        const storedBase64 = file.content;
-        const fileText = atob(storedBase64);
-        let decryptedPlain = null;
-        
-        try {
-            const encrypted = atob(fileText);
-            decryptedPlain = CryptoJS.AES.decrypt(encrypted, AES_KEY).toString(CryptoJS.enc.Utf8);
-        } catch (err) {
-            decryptedPlain = null;
-        }
-
-        if (decryptedPlain) {
-            let answers = file.gradingData || parseAnswersFromReport(decryptedPlain);
-            const correctCount = answers.filter(a => a.correct).length;
-            const totalCount = answers.length;
-            const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-            
-            gradingStats.innerHTML = `
-                Правильных ответов: ${correctCount}/${totalCount} | Оценка: ${score}%
-                ${file.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
-            `;
-            
-            answersList.innerHTML = answers.map((answer, index) => `
-                <div class="answer-item ${answer.correct ? 'correct' : 'incorrect'}">
-                    <div><strong>Вопрос ${index + 1}:</strong> ${escapeHtml(answer.question)}</div>
-                    <div style="margin: 5px 0;"><strong>Ответ:</strong> ${escapeHtml(answer.answer)}</div>
-                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                        <input type="checkbox" class="correct-checkbox" data-index="${index}" ${answer.correct ? 'checked' : ''}>
-                        <span>✅ Правильный ответ</span>
-                    </label>
-                </div>
-            `).join('');
-
-            document.querySelectorAll('.correct-checkbox').forEach(cb => {
-                cb.addEventListener('change', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    answers[index].correct = e.target.checked;
-                    
-                    const newCorrectCount = answers.filter(a => a.correct).length;
-                    const newScore = Math.round((newCorrectCount / totalCount) * 100);
-                    gradingStats.innerHTML = `
-                        Правильных ответов: ${newCorrectCount}/${totalCount} | Оценка: ${newScore}%
-                        ${file.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
-                    `;
-                    
-                    const answerItem = e.target.closest('.answer-item');
-                    if (e.target.checked) {
-                        answerItem.classList.add('correct');
-                        answerItem.classList.remove('incorrect');
-                    } else {
-                        answerItem.classList.add('incorrect');
-                        answerItem.classList.remove('correct');
-                    }
-                });
-            });
-
-            const saveGradingBtn = document.getElementById("saveGradingBtn");
-            const closeGradingBtn = document.getElementById("closeGradingBtn");
-            
-            if (saveGradingBtn) {
-                saveGradingBtn.onclick = () => {
-                    // Вместо прямого сохранения, показываем выбор сотрудника
-                    const username = extractUsernameFromFilename(file.name);
-                    const testType = extractTestTypeFromFilename(file.name);
-                    
-                    if (!username) {
-                        showError("Не удалось определить имя пользователя из названия файла!");
-                        return;
-                    }
-                    
-                    showEmployeeSelectionModal(file.name, username, testType, file, answers, fileIndex);
-                };
-            }
-            
-            if (closeGradingBtn) {
-                closeGradingBtn.onclick = () => {
-                    gradingPanel.style.display = 'none';
-                };
-            }
-
-            gradingPanel.style.display = 'block';
-        }
-    } catch (error) {
-        showError("Ошибка при загрузке ответов для оценки");
-    }
-}
-
-function parseAnswersFromReport(reportText) {
-    const lines = reportText.split('\n');
-    const answers = [];
-    let currentQuestion = null;
-    let currentAnswer = null;
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        
-        if (line.match(/^\d+\./)) {
-            if (currentQuestion && currentAnswer !== null) {
-                answers.push({
-                    question: currentQuestion,
-                    answer: currentAnswer,
-                    correct: false
-                });
-            }
-            currentQuestion = line.replace(/^\d+\.\s*/, '');
-            currentAnswer = null;
-        } else if (line.startsWith('Ответ:') && currentQuestion) {
-            currentAnswer = line.replace('Ответ:', '').trim();
-        }
-    }
-
-    if (currentQuestion && currentAnswer !== null) {
-        answers.push({
-            question: currentQuestion,
-            answer: currentAnswer,
-            correct: false
-        });
-    }
-
-    return answers;
-}
-
 function deleteFile(index) {
     const savedFiles = JSON.parse(localStorage.getItem("adminFiles") || "[]");
     const fileName = savedFiles[index].name;
@@ -2446,11 +1705,10 @@ function deleteFile(index) {
     }
 }
 
-// --- СТАТИСТИКА ---
+// --- ФУНКЦИИ ДЛЯ АДМИН-ПАНЕЛИ ---
+
 function calculateStats() {
     const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
-    
-    // Берем только проверенные результаты
     const validResults = statistics.filter(result => 
         result.graded === true && 
         result.score !== undefined && 
@@ -2462,7 +1720,6 @@ function calculateStats() {
         return getEmptyStats();
     }
     
-    // Убираем дубликаты по имени, типу теста и дате (в пределах 1 минуты)
     const uniqueResults = [];
     const seen = new Set();
     
@@ -2862,22 +2119,846 @@ function exportStatistics() {
     showMessage("Статистика экспортирована в CSV", "success");
 }
 
+// ИСПРАВЛЕННАЯ ФУНКЦИЯ: Удаление всех записей
 function clearAllData() {
     if (confirm("ВНИМАНИЕ! Это удалит ВСЕ данные:\n- Всех игроков\n- Все тесты\n- Всю статистику\n- Все файлы\n\nВы уверены?")) {
+        // Очищаем все данные кроме фиксированных сотрудников и пароля админа
+        const adminAuthenticated = localStorage.getItem('adminAuthenticated');
+        const fixedEmployees = localStorage.getItem('fixedEmployees');
+        
         localStorage.clear();
+        
+        // Восстанавливаем фиксированных сотрудников и статус админа
+        if (fixedEmployees) {
+            localStorage.setItem('fixedEmployees', fixedEmployees);
+        }
+        if (adminAuthenticated) {
+            localStorage.setItem('adminAuthenticated', adminAuthenticated);
+        }
+        
+        // Сбрасываем переменные
         playersDatabase = [];
-        showMessage("Все данные удалены", "success");
+        isAdminAuthenticated = adminAuthenticated === 'true';
+        
+        showMessage("Все данные удалены (кроме фиксированных сотрудников)", "success");
         renderAdmin();
     }
 }
 
-// Инициализация при загрузке страницы
+function renderFixedEmployees(employeesData) {
+    return `
+        <div class="employees-composition">
+            ${FIXED_EMPLOYEE_STRUCTURE.map(empTemplate => {
+                const employee = employeesData[empTemplate.id];
+                const isVacant = employee.username === 'Вакантно';
+                const isFixedEmployee = FIXED_EMPLOYEE_STRUCTURE.find(fixed => 
+                    fixed.id === empTemplate.id && fixed.username !== 'Вакантно'
+                );
+                
+                let typeClass = '';
+                if (employee.type === 'curator' || employee.type === 'senior_officer') {
+                    typeClass = 'employee-high-rank';
+                } else {
+                    typeClass = 'employee-standard';
+                }
+                
+                const academyFiles = employee.files.academy || [];
+                const examFiles = employee.files.exam || [];
+                const retrainingFiles = employee.files.retraining || [];
+                
+                return `
+                    <div class="employee-slot ${typeClass}" data-employee-id="${employee.id}">
+                        <div class="employee-header">
+                            <div class="employee-position">${employee.position}</div>
+                            <div class="employee-status ${isVacant ? 'status-vacant' : 'status-occupied'}">
+                                ${isVacant ? '🔄 Вакантно' : '✅ ' + employee.username}
+                            </div>
+                        </div>
+                        
+                        <div class="employee-content">
+                            ${isFixedEmployee && !isVacant ? `
+                            ` : `
+                                <input type="text" 
+                                       class="employee-username" 
+                                       value="" 
+                                       placeholder="Введите ник сотрудника"
+                                       data-employee-id="${employee.id}">
+                                
+                                <div class="employee-actions">
+                                    <button class="btn small save-employee-btn" data-employee-id="${employee.id}">
+                                        💾 Сохранить
+                                    </button>
+                                    <button class="btn small ghost clear-employee-btn" data-employee-id="${employee.id}" ${isVacant ? 'style="display: none;"' : ''}>
+                                        🗑️ Очистить
+                                    </button>
+                                </div>
+                            `}
+                            
+                            ${!isVacant ? `
+                                <div class="employee-folders">
+                                    <div class="folder-card ${getFolderState(academyFiles)}" 
+                                         data-employee-id="${employee.id}" 
+                                         data-folder-type="academy">
+                                        ${getFolderBadges(academyFiles)}
+                                        <div class="folder-icon">${getFolderIcon('academy')}</div>
+                                        <div class="folder-label">${getFolderLabel('academy')}</div>
+                                        <div class="folder-stats">
+                                            <div class="file-count">${academyFiles.length} файлов</div>
+                                            ${getFolderStatus(academyFiles, getFolderStats(academyFiles))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="folder-card ${getFolderState(examFiles)}" 
+                                         data-employee-id="${employee.id}" 
+                                         data-folder-type="exam">
+                                        ${getFolderBadges(examFiles)}
+                                        <div class="folder-icon">${getFolderIcon('exam')}</div>
+                                        <div class="folder-label">${getFolderLabel('exam')}</div>
+                                        <div class="folder-stats">
+                                            <div class="file-count">${examFiles.length} файлов</div>
+                                            ${getFolderStatus(examFiles, getFolderStats(examFiles))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="folder-card ${getFolderState(retrainingFiles)}" 
+                                         data-employee-id="${employee.id}" 
+                                         data-folder-type="retraining">
+                                        ${getFolderBadges(retrainingFiles)}
+                                        <div class="folder-icon">${getFolderIcon('retraining')}</div>
+                                        <div class="folder-label">${getFolderLabel('retraining')}</div>
+                                        <div class="folder-stats">
+                                            <div class="file-count">${retrainingFiles.length} файлов</div>
+                                            ${getFolderStatus(retrainingFiles, getFolderStats(retrainingFiles))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="employee-empty">
+                                    <span class="empty-text">Должность свободна</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function getFolderState(files) {
+    if (files.length === 0) return 'empty';
+    
+    const hasUnlockFiles = files.some(f => f.isUnlockFile);
+    const hasGradedFiles = files.some(f => f.graded && !f.isUnlockFile);
+    const hasNewFiles = files.some(f => f.isNew);
+    const hasPendingFiles = files.some(f => !f.graded && !f.isUnlockFile);
+    
+    if (hasUnlockFiles) return 'has-unlock';
+    if (hasNewFiles) return 'has-new';
+    if (hasPendingFiles) return 'has-pending';
+    if (hasGradedFiles) return 'has-graded';
+    
+    return 'has-files';
+}
+
+function getFolderStats(files) {
+    const totalFiles = files.length;
+    const unlockFiles = files.filter(f => f.isUnlockFile).length;
+    const gradedFiles = files.filter(f => f.graded && !f.isUnlockFile).length;
+    const pendingFiles = files.filter(f => !f.graded && !f.isUnlockFile).length;
+    const newFiles = files.filter(f => f.isNew).length;
+    
+    const averageScore = gradedFiles > 0 
+        ? Math.round(files.filter(f => f.graded && !f.isUnlockFile)
+                         .reduce((sum, f) => sum + parseInt(f.score), 0) / gradedFiles)
+        : 0;
+    
+    return { 
+        totalFiles, 
+        unlockFiles, 
+        gradedFiles, 
+        pendingFiles,
+        newFiles,
+        averageScore 
+    };
+}
+
+function getFolderIcon(folderType) {
+    const icons = {
+        academy: '📚',
+        exam: '🎓',
+        retraining: '🔄'
+    };
+    return icons[folderType] || '📁';
+}
+
+function getFolderLabel(folderType) {
+    const labels = {
+        academy: 'Академия',
+        exam: 'Экзамен',
+        retraining: 'Переатт.'
+    };
+    return labels[folderType] || folderType;
+}
+
+function getFolderBadges(files) {
+    let badges = '';
+    const stats = getFolderStats(files);
+    
+    if (stats.unlockFiles > 0) {
+        badges += '<div class="folder-badge badge-unlock">🔓</div>';
+    }
+    if (stats.newFiles > 0) {
+        badges += '<div class="folder-badge badge-new">NEW</div>';
+    }
+    
+    return badges;
+}
+
+function getFolderStatus(files, stats) {
+    if (stats.unlockFiles > 0) {
+        return `<div class="folder-details">${stats.unlockFiles} блокировка</div>`;
+    }
+    if (stats.pendingFiles > 0) {
+        return `<div class="folder-details">Ожидает оценки</div>`;
+    }
+    if (stats.gradedFiles > 0) {
+        const scoreClass = getScoreClass(stats.averageScore);
+        return `<div class="folder-score ${scoreClass}">${stats.averageScore}%</div>`;
+    }
+    return `<div class="folder-details"></div>`;
+}
+
+function getScoreClass(score) {
+    if (score >= 90) return 'score-excellent';
+    if (score >= 70) return 'score-good';
+    if (score >= 50) return 'score-average';
+    return 'score-poor';
+}
+
+function initEmployeesManagement() {
+    document.querySelectorAll('.save-employee-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const employeeId = e.target.dataset.employeeId;
+            const input = document.querySelector(`.employee-username[data-employee-id="${employeeId}"]`);
+            
+            if (input) {
+                const username = input.value.trim();
+                
+                if (!username) {
+                    showError('Введите ник сотрудника!');
+                    return;
+                }
+                
+                saveEmployee(employeeId, username);
+            }
+        });
+    });
+    
+    document.querySelectorAll('.clear-employee-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const employeeId = e.target.dataset.employeeId;
+            clearEmployee(employeeId);
+        });
+    });
+    
+    document.querySelectorAll('.employee-username').forEach(input => {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const employeeId = e.target.dataset.employeeId;
+                const username = e.target.value.trim();
+                
+                if (username) {
+                    saveEmployee(employeeId, username);
+                }
+            }
+        });
+    });
+    
+    document.querySelectorAll('.folder-card').forEach(folder => {
+        folder.addEventListener('click', (e) => {
+            const employeeId = e.currentTarget.dataset.employeeId;
+            const folderType = e.currentTarget.dataset.folderType;
+            openFolderModal(employeeId, folderType);
+        });
+    });
+}
+
+function saveEmployee(employeeId, username) {
+    const employeesData = loadEmployeesData();
+    const employee = employeesData[employeeId];
+    
+    const fixedEmployee = FIXED_EMPLOYEE_STRUCTURE.find(emp => 
+        emp.id === employeeId && emp.username !== 'Вакантно'
+    );
+    
+    if (fixedEmployee && fixedEmployee.username !== 'Вакантно') {
+        showError(`Сотрудник "${fixedEmployee.username}" является фиксированным и не может быть изменен!`);
+        return;
+    }
+    
+    const existingEmployee = getEmployeeByUsername(username, employeesData);
+    if (existingEmployee && existingEmployee.id !== employeeId) {
+        showError(`Сотрудник "${username}" уже назначен на должность "${existingEmployee.position}"!`);
+        return;
+    }
+    
+    employee.username = username;
+    
+    employee.folders = {
+        academy: `${username}_Академия`,
+        exam: `${username}_Экзамен`,
+        retraining: `${username}_Переаттестация`
+    };
+    
+    saveEmployeesData(employeesData);
+    showMessage(`Сотрудник "${username}" назначен на должность "${employee.position}"`, 'success');
+    
+    renderAdmin();
+}
+
+function clearEmployee(employeeId) {
+    const employeesData = loadEmployeesData();
+    const employee = employeesData[employeeId];
+    const oldUsername = employee.username;
+    
+    const fixedEmployee = FIXED_EMPLOYEE_STRUCTURE.find(emp => 
+        emp.id === employeeId && emp.username !== 'Вакантно'
+    );
+    
+    if (fixedEmployee && fixedEmployee.username !== 'Вакантно') {
+        showError(`Сотрудник "${fixedEmployee.username}" является фиксированным и не может быть удален!`);
+        return;
+    }
+    
+    if (oldUsername === 'Вакантно') {
+        showError('Эта должность уже свободна!');
+        return;
+    }
+    
+    if (!confirm(`Освободить должность "${employee.position}" от сотрудника "${oldUsername}"?`)) {
+        return;
+    }
+    
+    employee.username = 'Вакантно';
+    
+    employee.folders = {
+        academy: `${employee.position}_Академия`,
+        exam: `${employee.position}_Экзамен`,
+        retraining: `${employee.position}_Переаттестация`
+    };
+    
+    saveEmployeesData(employeesData);
+    showMessage(`Должность "${employee.position}" освобождена`, 'success');
+    
+    renderAdmin();
+}
+
+function openFolderModal(employeeId, folderType) {
+    const employeesData = loadEmployeesData();
+    const employee = employeesData[employeeId];
+    
+    if (!employee) return;
+    
+    const folderNames = {
+        academy: 'Академия',
+        exam: 'Экзамен', 
+        retraining: 'Переаттестация'
+    };
+    
+    const files = employee.files[folderType] || [];
+    const testFiles = files.filter(f => !f.isUnlockFile);
+    const unlockFiles = files.filter(f => f.isUnlockFile);
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h2>📁 ${employee.username} - ${folderNames[folderType]}</h2>
+            <div class="small" style="margin-bottom: 15px; color: var(--text-muted);">
+                📝 Файлы появляются здесь после оценки администратором или блокировки теста
+            </div>
+            
+            <!-- КНОПКА ЗАГРУЗКИ ФАЙЛА -->
+            <div style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                <h4 style="margin-top: 0; color: var(--accent);">📤 Загрузить файл в папку</h4>
+                <input type="file" id="folderFileInput" accept=".docx,.txt,.pdf" style="display: none;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn small" id="chooseFolderFileBtn">📁 Выбрать файл</button>
+                    <span id="selectedFileName" style="color: var(--text-muted); font-size: 0.9em;">Файл не выбран</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button class="btn small" id="uploadToFolderBtn" disabled>⬆️ Загрузить в папку</button>
+                </div>
+            </div>
+            
+            <div class="files-list">
+                ${unlockFiles.length > 0 ? `
+                    <div class="file-section">
+                        <div class="file-section-title">
+                            <span>🔓</span>
+                            <span>Файлы разблокировки (${unlockFiles.length})</span>
+                        </div>
+                        ${unlockFiles.map(file => `
+                            <div class="file-item">
+                                <div class="file-info">
+                                    <div class="file-name">
+                                        <span>🔓</span>
+                                        ${escapeHtml(file.name)}
+                                    </div>
+                                    <div class="file-date">${file.date}</div>
+                                    <div class="file-score" style="color: var(--warning);">Файл разблокировки</div>
+                                </div>
+                                <div class="file-actions">
+                                    <button class="btn small download-file-btn" 
+                                            data-file-content="${btoa(unescape(encodeURIComponent(file.content)))}"
+                                            data-file-name="${file.name}">
+                                        📥 Скачать
+                                    </button>
+                                    <button class="btn small ghost delete-file-btn" 
+                                            data-file-id="${file.id}">
+                                        🗑️ Удалить
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                
+                ${testFiles.length > 0 ? `
+                    <div class="file-section">
+                        <div class="file-section-title">
+                            <span>📝</span>
+                            <span>Результаты тестов (${testFiles.length})</span>
+                        </div>
+                        ${testFiles.map(file => `
+                            <div class="file-item">
+                                <div class="file-info">
+                                    <div class="file-name">
+                                        ${file.graded ? '✅' : '⏳'} ${escapeHtml(file.name)}
+                                    </div>
+                                    <div class="file-date">${file.date}</div>
+                                    ${file.graded ? `
+                                        <div class="file-score ${file.score >= 70 ? 'score-good' : 'score-bad'}">
+                                            Оценка: ${file.score}%
+                                        </div>
+                                    ` : `
+                                        <div class="file-score" style="color: var(--warning);">
+                                            Ожидает оценки
+                                        </div>
+                                    `}
+                                </div>
+                                <div class="file-actions">
+                                    <button class="btn small download-file-btn" 
+                                            data-file-content="${btoa(unescape(encodeURIComponent(file.content)))}"
+                                            data-file-name="${file.name}">
+                                        📥 Скачать
+                                    </button>
+                                    <button class="btn small ghost delete-file-btn" 
+                                            data-file-id="${file.id}">
+                                        🗑️ Удалить
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                
+                ${files.length === 0 ? `
+                    <div class="no-files-message">
+                        <p>📁 В папке пока нет файлов</p>
+                        <p class="small">Вы можете загрузить файлы с помощью формы выше</p>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn ghost" id="closeFolderModal">Закрыть</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    document.getElementById('closeFolderModal').addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    const folderFileInput = document.getElementById('folderFileInput');
+    const chooseFolderFileBtn = document.getElementById('chooseFolderFileBtn');
+    const uploadToFolderBtn = document.getElementById('uploadToFolderBtn');
+    const selectedFileName = document.getElementById('selectedFileName');
+    
+    chooseFolderFileBtn.addEventListener('click', () => folderFileInput.click());
+    
+    folderFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            const file = e.target.files[0];
+            selectedFileName.textContent = file.name;
+            uploadToFolderBtn.disabled = false;
+        } else {
+            selectedFileName.textContent = 'Файл не выбран';
+            uploadToFolderBtn.disabled = true;
+        }
+    });
+    
+    uploadToFolderBtn.addEventListener('click', () => {
+        const file = folderFileInput.files[0];
+        if (!file) return;
+        
+        uploadFileToEmployeeFolder(file, employeeId, folderType, modal);
+    });
+    
+    document.querySelectorAll('.download-file-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const fileContent = e.target.dataset.fileContent;
+            const fileName = e.target.dataset.fileName;
+            
+            try {
+                const content = decodeURIComponent(escape(atob(fileContent)));
+                const blob = new Blob([content], { 
+                    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                });
+                saveAs(blob, fileName);
+                showMessage('Файл скачан', 'success');
+            } catch (error) {
+                showError('Ошибка при скачивании файла');
+            }
+        });
+    });
+    
+    document.querySelectorAll('.delete-file-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const fileId = e.target.dataset.fileId;
+            if (confirm('Удалить этот файл?')) {
+                deleteEmployeeFile(employeeId, folderType, fileId);
+                modal.remove();
+                renderAdmin();
+            }
+        });
+    });
+}
+
+function uploadFileToEmployeeFolder(file, employeeId, folderType, modal) {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        const content = e.target.result;
+        const fileName = file.name;
+        
+        const employeesData = loadEmployeesData();
+        const employee = employeesData[employeeId];
+        
+        if (!employee) {
+            showError('Сотрудник не найден!');
+            return;
+        }
+        
+        const newFile = {
+            id: Date.now().toString(),
+            name: fileName,
+            content: typeof content === 'string' ? content : new TextDecoder().decode(content),
+            date: new Date().toLocaleString('ru-RU'),
+            type: 'uploaded',
+            graded: false,
+            score: 0,
+            isUnlockFile: false,
+            isGraded: false,
+            isNew: true
+        };
+        
+        if (!employee.files[folderType]) {
+            employee.files[folderType] = [];
+        }
+        
+        employee.files[folderType].push(newFile);
+        saveEmployeesData(employeesData);
+        
+        showMessage(`Файл "${fileName}" успешно загружен в папку!`, 'success');
+        
+        modal.remove();
+        renderAdmin();
+    };
+    
+    reader.onerror = () => {
+        showError('Ошибка при чтении файла');
+    };
+    
+    reader.readAsText(file);
+}
+
+function deleteEmployeeFile(employeeId, folderType, fileId) {
+    const employeesData = loadEmployeesData();
+    const employee = employeesData[employeeId];
+    
+    if (!employee || !employee.files[folderType]) return;
+    
+    employee.files[folderType] = employee.files[folderType].filter(file => file.id !== fileId);
+    saveEmployeesData(employeesData);
+    
+    showMessage('Файл удален', 'success');
+}
+
+// --- ВЕРНУЛИ ОБРАТНО СТРУКТУРУ С ДВУМЯ КОЛОНКАМИ ---
+function renderAdmin() {
+    const area = document.getElementById("adminArea");
+    const employeesData = loadEmployeesData();
+    
+    // Подсчет статистики
+    const totalPositions = FIXED_EMPLOYEE_STRUCTURE.length;
+    const occupiedPositions = Object.values(employeesData).filter(emp => emp.username !== 'Вакантно').length;
+    const vacantPositions = totalPositions - occupiedPositions;
+    
+    // Подсчет по типам
+    const typeCounts = {
+        curator: 0,
+        senior_officer: 0,
+        officer: 0,
+        cadet: 0
+    };
+    
+    Object.values(employeesData).forEach(emp => {
+        if (emp.username !== 'Вакантно') {
+            typeCounts[emp.type]++;
+        }
+    });
+
+    const stats = calculateStats();
+    
+    area.innerHTML = `
+        <div class="admin-container">
+            <div class="admin-layout">
+                <!-- ЛЕВАЯ КОЛОНКА - СОТРУДНИКИ -->
+                <div class="admin-employees-sidebar">
+                    <h3>👥 Состав Военной Полиции</h3>
+                    
+                    <!-- СТАТИСТИКА СОТРУДНИКОВ -->
+                    <div class="employees-stats">
+                        <div class="employee-stat">
+                            <div class="stat-value">${totalPositions}</div>
+                            <div class="stat-label">Всего мест</div>
+                        </div>
+                        <div class="employee-stat">
+                            <div class="stat-value">${occupiedPositions}</div>
+                            <div class="stat-label">Занято</div>
+                        </div>
+                        <div class="employee-stat">
+                            <div class="stat-value">${vacantPositions}</div>
+                            <div class="stat-label">Свободно</div>
+                        </div>
+                    </div>
+                    
+                    <!-- ФИКСИРОВАННАЯ СЕТКА СОТРУДНИКОВ -->
+                    ${renderFixedEmployees(employeesData)}
+                    
+                    <div style="margin-top: 15px; font-size: 0.9em; color: var(--text-muted);">
+                        💡 Фиксированные сотрудники не могут быть изменены. Редактирование доступно только для вакантных мест.
+                    </div>
+                </div>
+
+                <!-- ПРАВАЯ КОЛОНКА - ОСНОВНОЙ КОНТЕНТ -->
+                <div class="admin-main-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="color: var(--accent); margin: 0;">📊 Админ-панель</h2>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn small" onclick="exportStatistics()">📈 Экспорт статистики</button>
+                            <button class="btn small ghost" onclick="logoutAdmin()">🚪 Выйти</button>
+                        </div>
+                    </div>
+                    
+                    <!-- БЛОК СТАТИСТИКИ -->
+                    <div style="margin-bottom: 30px;">
+                        <h3>📈 Статистика тестирования</h3>
+                        
+                        <!-- ОСНОВНЫЕ МЕТРИКИ -->
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number">${stats.totalTests}</div>
+                                <div class="stat-label">Всего тестов</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${stats.averageScore}%</div>
+                                <div class="stat-label">Средний балл</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${stats.passRate}%</div>
+                                <div class="stat-label">Проходимость</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${stats.averageTime}</div>
+                                <div class="stat-label">Среднее время</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Дополнительная статистика -->
+                        <div class="extended-stats">
+                            <div class="stat-row">
+                                <div class="stat-item">
+                                    <span class="stat-title">📊 Баллы:</span>
+                                    <div class="stat-values">
+                                        <span>Мин: <strong>${stats.minScore}%</strong></span>
+                                        <span>Макс: <strong>${stats.maxScore}%</strong></span>
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-title">⏱️ Время:</span>
+                                    <div class="stat-values">
+                                        <span>Мин: <strong>${stats.minTime}</strong></span>
+                                        <span>Макс: <strong>${stats.maxTime}</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- ТИПЫ ТЕСТОВ -->
+                        <div class="test-types">
+                            <div class="type-card exam">
+                                <div class="type-icon">🎓</div>
+                                <div class="type-info">
+                                    <div class="type-count">${stats.examCount}</div>
+                                    <div class="type-label">Экзамены</div>
+                                </div>
+                            </div>
+                            <div class="type-card academy">
+                                <div class="type-icon">📚</div>
+                                <div class="type-info">
+                                    <div class="type-count">${stats.academyCount}</div>
+                                    <div class="type-label">Академия</div>
+                                </div>
+                            </div>
+                            <div class="type-card">
+                                <div class="type-icon">🔄</div>
+                                <div class="type-info">
+                                    <div class="type-count">${stats.retrainingCount}</div>
+                                    <div class="type-label">Переаттестация</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- ДЕТАЛЬНАЯ СТАТИСТИКА -->
+                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="stat-section">
+                                <h4>📊 Распределение оценок</h4>
+                                <div class="grade-distribution">
+                                    ${renderGradeDistribution(stats.gradeDistribution)}
+                                </div>
+                            </div>
+                            <div class="stat-section">
+                                <h4>🎯 Последние результаты</h4>
+                                <div class="recent-results">
+                                    ${renderRecentResults(stats.recentResults)}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- РЕЙТИНГИ ТЕСТОВ -->
+                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="stat-section">
+                                <h4>📋 Рейтинг экзаменов</h4>
+                                <div class="ranking-list">
+                                    ${renderRanking(stats.examRanking, 'exam')}
+                                </div>
+                            </div>
+                            
+                            <div class="stat-section">
+                                <h4>📋 Рейтинг академии</h4>
+                                <div class="ranking-list">
+                                    ${renderRanking(stats.academyRanking, 'academy')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ТЕСТЫ, ОЖИДАЮЩИЕ ОЦЕНКИ -->
+                    <div style="margin-bottom: 30px;">
+                        <h3>⏳ Тесты, ожидающие оценку</h3>
+                        <div class="pending-tests">
+                            ${renderPendingTests()}
+                        </div>
+                    </div>
+                    
+                    <!-- УПРАВЛЕНИЕ ИГРОКАМИ -->
+                    <div style="margin-bottom: 30px;">
+                        <h3>👥 Управление игроками</h3>
+                        <div class="players-management">
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <input type="text" id="searchPlayer" placeholder="Поиск игрока..." style="flex: 1;">
+                                <button class="btn" id="searchPlayerBtn">🔍 Поиск</button>
+                            </div>
+                            <div class="players-list">
+                                ${renderPlayersList()}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ЗАГРУЗКА И ПРОВЕРКА РЕЗУЛЬТАТОВ -->
+                    <div style="margin-bottom: 30px;">
+                        <h3>📁 Загрузка и проверка результатов</h3>
+                        <p>Загрузите файлы результатов тестов для проверки.</p>
+                        <p><strong>Важно:</strong> Файлы автоматически сохраняются в папки сотрудников только после оценки!</p>
+                        <p>Система определит имя сотрудника из названия файла (формат: <code>Имя_Фамилия_ТипТеста_время_результаты.docx</code>)</p>
+                        
+                        <input type="file" id="fileInput" multiple accept=".docx,.txt" style="display: none;">
+                        <button class="btn" id="chooseFileBtn">📁 Выбрать файлы</button>
+                        
+                        <div style="margin-top: 20px;">
+                            <h4>Загруженные файлы:</h4>
+                            <ul id="fileList"></ul>
+                        </div>
+                        
+                        <!-- ВАЖНО: Панель оценки вернул как простой блок, как в старом коде -->
+                        <div id="gradingPanel" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <h4>📝 Оценка ответов</h4>
+                            <div id="gradingStats" class="grading-stats"></div>
+                            <div id="answersList"></div>
+                            <div style="margin-top: 15px;">
+                                <button class="btn" id="saveGradingBtn">💾 Сохранить оценку</button>
+                                <button class="btn ghost" id="closeGradingBtn">❌ Закрыть</button>
+                            </div>
+                        </div>
+                        
+                        <div id="fileViewer" class="report" style="display: none; margin-top: 20px;"></div>
+                    </div>
+                    
+                    <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                        <button class="btn ghost" id="clearAllBtn" onclick="clearAllData()">🗑️ Удалить все записи</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Просмотр файла (отдельное модальное окно) -->
+        <div id="fileViewer" class="modal-overlay" style="display: none;">
+            <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
+                <!-- Содержимое файла будет здесь -->
+            </div>
+        </div>
+    `;
+
+    // Обработчики событий для админ-панели
+    document.getElementById("logoutAdminBtn")?.addEventListener("click", logoutAdmin);
+    
+    // Инициализация остальных компонентов админ-панели
+    initAdminPanel();
+    initEmployeesManagement();
+    
+    // ДОБАВЛЯЕМ ОБРАБОТЧИКИ КНОПОК
+    const searchPlayerBtn = document.getElementById('searchPlayerBtn');
+    if (searchPlayerBtn) {
+        searchPlayerBtn.addEventListener('click', searchPlayers);
+    }
+    
+    const searchPlayerInput = document.getElementById('searchPlayer');
+    if (searchPlayerInput) {
+        searchPlayerInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchPlayers();
+            }
+        });
+    }
+    
+    // Кнопка "Удалить все записи" уже имеет onclick обработчик в HTML
+}
+
+// --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
-
-
-
-
-
-
-
-
