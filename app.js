@@ -14,19 +14,19 @@ let playersDatabase = JSON.parse(localStorage.getItem('playersDatabase') || '[]'
 
 // Фиксированная структура сотрудников с реальными именами
 const FIXED_EMPLOYEE_STRUCTURE = [
-    { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Sairus_Honda' },
+    { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Maks_Willov' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
     { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
-    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Dexter_Valhalla' },
-    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Maks_Willov' },
+    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Matthew_Costeriko' },
+    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Angel_Extazzy' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Federico_Costeriko' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Matthew_Costeriko' }
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Chaffy_Washington' },
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
 const examQuestions = [
@@ -2873,6 +2873,7 @@ function clearAllData() {
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', initUI);
+
 
 
 
