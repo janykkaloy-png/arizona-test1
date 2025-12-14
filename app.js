@@ -20,8 +20,8 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Angel_Extazzy' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Aleksandr_Mazeksov' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Chaffy_Washington' }
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Chaffy_Washington' },
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
 const examQuestions = [
@@ -88,26 +88,17 @@ let currentFileIndex = null;
 
 // --- ФУНКЦИИ ДЛЯ СОХРАНЕНИЯ ФАЙЛОВ В ПАПКИ СОТРУДНИКОВ ---
 
-// УЛУЧШЕННАЯ ФУНКЦИЯ: Извлекает полный ник из названия файла
 function extractUsernameFromFilename(filename) {
     console.log('🔍 Извлечение имени из файла:', filename);
     
-    // Убираем расширение .docx
     const nameWithoutExt = filename.replace(/\.docx$/, '');
     
-    // Пытаемся найти полное имя до первого разделителя теста
     const patterns = [
-        // Формат: Maks_Willov_Academy_15мин_результаты.docx
         /^([^_]+_[^_]+)_(?:Academy|Академия|Exam|Экзамен|Retraining|Переаттестация)/i,
-        // Формат: Maks_Willov_Academy_15мин_оценка_75%.docx
         /^([^_]+_[^_]+)_(?:Academy|Академия|Exam|Экзамен|Retraining|Переаттестация).*?оценка/i,
-        // Формат: Maks_Willov_код_разблокировки.docx
         /^([^_]+_[^_]+)_код_разблокировки/i,
-        // Формат: Maks_Willov_Academy_разблокировка_...
         /^([^_]+_[^_]+)_(?:Academy|Академия|Exam|Экзамен|Retraining|Переаттестация).*?разблокировка/i,
-        // Более простой вариант: два слова через подчеркивание в начале
         /^([a-zA-Z]+_[a-zA-Z]+)_/,
-        // Если есть только одно слово: Maks_Academy_...
         /^([a-zA-Z]+)_(?:Academy|Академия|Exam|Экзамен|Retraining|Переаттестация)/i,
     ];
     
@@ -120,12 +111,9 @@ function extractUsernameFromFilename(filename) {
         }
     }
     
-    // Если не нашли через паттерны, пробуем разделить по подчеркиваниям
     const parts = nameWithoutExt.split('_');
     
-    // Пробуем найти полное имя (две части)
     if (parts.length >= 2) {
-        // Проверяем, не является ли вторая часть типом теста
         const secondPart = parts[1].toLowerCase();
         const isTestType = ['academy', 'академия', 'exam', 'экзамен', 'retraining', 'переаттестация'].includes(secondPart);
         
@@ -136,7 +124,6 @@ function extractUsernameFromFilename(filename) {
         }
     }
     
-    // Если только одно слово
     if (parts.length >= 1 && /^[a-zA-Z]+$/.test(parts[0])) {
         console.log('⚠️ Извлечено только имя:', parts[0], 'из', filename);
         return parts[0];
@@ -312,19 +299,38 @@ function showEmployeeSelectionModal(filename, username, testType, gradedFile, gr
 }
 
 function saveGradedResultsToEmployee(employee, gradedFile, gradedAnswers, fileIndex) {
-    console.log('💾 СОХРАНЕНИЕ ОЦЕНКИ для сотрудника:', employee.username);
+    console.log('💾 СОХРАНЕНИЕ для сотрудника:', employee.username);
     
     const username = employee.username;
     const testType = gradedFile.testType || extractTestTypeFromFilename(gradedFile.name);
-    const score = gradedFile.score;
     const timeSpent = gradedFile.timeSpent || extractTimeFromFilename(gradedFile.name) || 15;
-    const correctAnswers = gradedFile.correctAnswers;
-    const totalAnswers = gradedFile.totalAnswers;
-    const passed = gradedFile.passed;
     
-    const testTypeName = getTestTypeName(testType);
+    let reportText, fileName;
     
-    let reportText = `${testTypeName.toUpperCase()} ВОЕННОЙ ПОЛИЦИИ - РЕЗУЛЬТАТЫ С ОЦЕНКОЙ
+    if (gradedFile.isUnlockFile) {
+        reportText = `КОД РАЗБЛОКИРОВКИ ТЕСТА - СОХРАНЁН В ПАПКУ
+=================================
+
+Тип теста: ${getTestTypeName(testType)}
+Имя пользователя: ${username}
+Дата сохранения: ${new Date().toLocaleString('ru-RU')}
+
+Файл разблокировки сохранен в папку сотрудника ${username}
+Администратор: Система
+=================================
+Arizona RP | Военная Полиция
+Файл сохранен автоматически`;
+
+        fileName = `${username}_${getTestTypeName(testType)}_разблокировка_сохранено_${new Date().toLocaleDateString('ru-RU')}.docx`;
+        
+    } else {
+        const score = gradedFile.score;
+        const correctAnswers = gradedFile.correctAnswers;
+        const totalAnswers = gradedFile.totalAnswers;
+        const passed = gradedFile.passed;
+        const testTypeName = getTestTypeName(testType);
+        
+        reportText = `${testTypeName.toUpperCase()} ВОЕННОЙ ПОЛИЦИИ - РЕЗУЛЬТАТЫ С ОЦЕНКОЙ
 =================================
 
 Общая информация:
@@ -342,19 +348,20 @@ function saveGradedResultsToEmployee(employee, gradedFile, gradedAnswers, fileIn
 ----------------
 `;
 
-    gradedAnswers.forEach((answer, index) => {
-        reportText += `\n${index + 1}. ${escapeHtml(answer.question)}\n`;
-        reportText += `Ответ: ${escapeHtml(answer.answer)}\n`;
-        reportText += `Оценка: ${answer.correct ? '✅ Правильно' : '❌ Неправильно'}\n`;
-        reportText += `---------------------------------\n`;
-    });
+        gradedAnswers.forEach((answer, index) => {
+            reportText += `\n${index + 1}. ${escapeHtml(answer.question)}\n`;
+            reportText += `Ответ: ${escapeHtml(answer.answer)}\n`;
+            reportText += `Оценка: ${answer.correct ? '✅ Правильно' : '❌ Неправильно'}\n`;
+            reportText += `---------------------------------\n`;
+        });
 
-    reportText += `\n
+        reportText += `\n
 =================================
 Arizona RP | Военная Полиция
 Тест оценен администратором`;
 
-    const fileName = `${username}_${testTypeName}_${timeSpent}мин_оценка_${score}%.docx`;
+        fileName = `${username}_${testTypeName}_${timeSpent}мин_оценка_${score}%.docx`;
+    }
     
     console.log('📝 Сохраняем файл:', fileName, 'для сотрудника:', username, 'тип:', testType);
     
@@ -366,34 +373,48 @@ Arizona RP | Военная Полиция
     );
     
     if (success) {
-        showMessage(`✅ Оценка сохранена! Файл "${fileName}" сохранен в папку сотрудника ${username}`, "success");
+        const message = gradedFile.isUnlockFile 
+            ? `✅ Файл разблокировки сохранен в папку сотрудника ${username}!` 
+            : `✅ Оценка сохранена! Файл "${fileName}" сохранен в папку сотрудника ${username}`;
+            
+        showMessage(message, "success");
         
         const savedFiles = JSON.parse(localStorage.getItem("adminFiles") || "[]");
         if (savedFiles[fileIndex]) {
             savedFiles[fileIndex].username = username;
             savedFiles[fileIndex].testType = testType;
             savedFiles[fileIndex].graded = true;
-            savedFiles[fileIndex].score = score;
-            savedFiles[fileIndex].correctAnswers = correctAnswers;
-            savedFiles[fileIndex].totalAnswers = totalAnswers;
-            savedFiles[fileIndex].passed = passed;
+            
+            if (gradedFile.isUnlockFile) {
+                savedFiles[fileIndex].isUnlockFile = true;
+                savedFiles[fileIndex].passed = true;
+                savedFiles[fileIndex].score = 100;
+            } else {
+                savedFiles[fileIndex].score = gradedFile.score;
+                savedFiles[fileIndex].correctAnswers = gradedFile.correctAnswers;
+                savedFiles[fileIndex].totalAnswers = gradedFile.totalAnswers;
+                savedFiles[fileIndex].passed = gradedFile.passed;
+            }
+            
             localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
         }
         
         const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
-        statistics.push({
-            username: username,
-            testType: testType,
-            score: score,
-            timeSpent: timeSpent,
-            correctAnswers: correctAnswers,
-            totalAnswers: totalAnswers,
-            passed: passed,
-            date: new Date().toISOString(),
-            graded: true
-        });
-        
-        localStorage.setItem("testStatistics", JSON.stringify(statistics));
+        if (!gradedFile.isUnlockFile) {
+            statistics.push({
+                username: username,
+                testType: testType,
+                score: gradedFile.score,
+                timeSpent: timeSpent,
+                correctAnswers: gradedFile.correctAnswers,
+                totalAnswers: gradedFile.totalAnswers,
+                passed: gradedFile.passed,
+                date: new Date().toISOString(),
+                graded: true
+            });
+            
+            localStorage.setItem("testStatistics", JSON.stringify(statistics));
+        }
         
         const gradingPanel = document.getElementById("gradingPanel");
         if (gradingPanel) {
@@ -404,7 +425,7 @@ Arizona RP | Военная Полиция
         renderAdmin();
     } else {
         console.error('❌ Ошибка сохранения файла');
-        showError(`❌ Не удалось сохранить файл в папку сотрудника ${username}. Проверьте, что сотрудник существует в системе.`);
+        showError(`❌ Не удалось сохранить файл в папку сотрудника ${username}.`);
     }
 }
 
@@ -1421,7 +1442,8 @@ function handleFileUpload(e) {
                     totalAnswers: 0,
                     gradingData: null,
                     username: extractedUsername,
-                    testType: testType
+                    testType: testType,
+                    isUnlockFile: file.name.toLowerCase().includes('разблокировк')
                 });
                 showMessage(`Файл "${file.name}" загружен! ${extractedUsername ? `Определен сотрудник: ${extractedUsername}` : 'Сотрудник не определен'}`, "success");
             }
@@ -1449,6 +1471,7 @@ function initAdminPanel() {
     renderFiles();
 }
 
+// ВАЖНО: ОБНОВЛЕННАЯ ФУНКЦИЯ С КНОПКОЙ ДЛЯ ФАЙЛОВ РАЗБЛОКИРОВКИ
 function renderFiles() {
     const fileList = document.getElementById("fileList");
     if (!fileList) return;
@@ -1467,7 +1490,11 @@ function renderFiles() {
                 <span class="small">${(f.size / 1024).toFixed(1)} KB</span>
             </div>
             <div class="small">Загружен: ${f.uploaded}</div>
-            ${f.graded ? `
+            ${f.name.toLowerCase().includes('разблокировк') ? `
+                <div class="small" style="color: var(--warning); font-weight: bold;">
+                    🔓 Файл разблокировки
+                </div>
+            ` : f.graded ? `
                 <div class="small" style="color: ${f.score >= 70 ? 'var(--success)' : 'var(--error)'}; font-weight: bold;">
                     Оценка: ${f.score}% (${f.correctAnswers}/${f.totalAnswers})
                 </div>
@@ -1480,7 +1507,15 @@ function renderFiles() {
                 </label>
                 
                 <button class="btn small open-btn" data-index="${i}">👁️ Просмотр</button>
-                <button class="btn small grade-btn" data-index="${i}">📝 ${f.graded ? 'Изменить оценку' : 'Оценить'}</button>
+                
+                ${f.name.toLowerCase().includes('разблокировк') ? `
+                    <!-- КНОПКА ДЛЯ ФАЙЛОВ РАЗБЛОКИРОВКИ -->
+                    <button class="btn small unlock-save-btn" data-index="${i}">📁 Сохранить в папку</button>
+                ` : `
+                    <!-- КНОПКА ДЛЯ ОБЫЧНЫХ ТЕСТОВ -->
+                    <button class="btn small grade-btn" data-index="${i}">📝 ${f.graded ? 'Изменить оценку' : 'Оценить'}</button>
+                `}
+                
                 <button class="btn small ghost del-btn" data-index="${i}">❌ Удалить</button>
             </div>
         </li>
@@ -1508,6 +1543,14 @@ function renderFiles() {
         });
     });
 
+    // ДОБАВЛЕН ОБРАБОТЧИК ДЛЯ КНОПКИ РАЗБЛОКИРОВКИ
+    document.querySelectorAll(".unlock-save-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const index = parseInt(e.target.dataset.index);
+            saveUnlockFileToEmployee(savedFiles[index], index);
+        });
+    });
+
     document.querySelectorAll(".del-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
             const index = parseInt(e.target.dataset.index);
@@ -1516,7 +1559,58 @@ function renderFiles() {
     });
 }
 
-// ВАЖНО: Изменил панель оценки на простой блок, как в старом коде
+// НОВАЯ ФУНКЦИЯ ДЛЯ СОХРАНЕНИЯ ФАЙЛОВ РАЗБЛОКИРОВКИ
+function saveUnlockFileToEmployee(file, fileIndex) {
+    try {
+        const storedBase64 = file.content;
+        const fileText = atob(storedBase64);
+        let decryptedContent = null;
+        
+        try {
+            const encrypted = atob(fileText);
+            decryptedContent = CryptoJS.AES.decrypt(encrypted, AES_KEY).toString(CryptoJS.enc.Utf8);
+        } catch (err) {
+            decryptedContent = fileText;
+        }
+
+        const unlockMatch = decryptedContent?.match(/Имя пользователя:\s*([^\n]+)/i);
+        const username = unlockMatch ? unlockMatch[1].trim() : extractUsernameFromFilename(file.name);
+        
+        const typeMatch = decryptedContent?.match(/Тип теста:\s*([^\n]+)/i);
+        const testType = typeMatch ? typeMatch[1].toLowerCase().includes('академи') ? 'academy' : 
+                               typeMatch[1].toLowerCase().includes('экзамен') ? 'exam' : 
+                               typeMatch[1].toLowerCase().includes('переаттестац') ? 'retraining' : 'academy' 
+                         : extractTestTypeFromFilename(file.name);
+        
+        if (!username || username === '' || username === 'Вакантно') {
+            showError("Не удалось определить имя сотрудника из файла!");
+            return;
+        }
+
+        showEmployeeSelectionModal(
+            file.name,
+            username,
+            testType,
+            {
+                ...file,
+                isUnlockFile: true,
+                testType: testType,
+                passed: true,
+                score: 100,
+                correctAnswers: 1,
+                totalAnswers: 1,
+                timeSpent: extractTimeFromFilename(file.name) || 15
+            },
+            [{ question: "Файл разблокировки", answer: "Код разблокировки теста", correct: true }],
+            fileIndex
+        );
+        
+    } catch (error) {
+        console.error("Ошибка при обработке файла разблокировки:", error);
+        showError("Ошибка при обработке файла разблокировки");
+    }
+}
+
 function openGradingPanel(file, fileIndex) {
     const gradingPanel = document.getElementById("gradingPanel");
     const gradingStats = document.getElementById("gradingStats");
@@ -1547,7 +1641,6 @@ function openGradingPanel(file, fileIndex) {
                 ${file.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
             `;
             
-            // ИСПОЛЬЗУЕМ УЛУЧШЕННУЮ ФУНКЦИЮ ДЛЯ ИЗВЛЕЧЕНИЯ ПОЛНОГО ИМЕНИ
             const extractedUsername = extractUsernameFromFilename(file.name);
             const testType = extractTestTypeFromFilename(file.name);
             
@@ -1628,7 +1721,6 @@ function openGradingPanel(file, fileIndex) {
                 };
             }
 
-            // Показываем как простой блок, не как модальное окно
             gradingPanel.style.display = 'block';
         }
     } catch (error) {
@@ -2119,16 +2211,13 @@ function exportStatistics() {
     showMessage("Статистика экспортирована в CSV", "success");
 }
 
-// ИСПРАВЛЕННАЯ ФУНКЦИЯ: Удаление всех записей
 function clearAllData() {
     if (confirm("ВНИМАНИЕ! Это удалит ВСЕ данные:\n- Всех игроков\n- Все тесты\n- Всю статистику\n- Все файлы\n\nВы уверены?")) {
-        // Очищаем все данные кроме фиксированных сотрудников и пароля админа
         const adminAuthenticated = localStorage.getItem('adminAuthenticated');
         const fixedEmployees = localStorage.getItem('fixedEmployees');
         
         localStorage.clear();
         
-        // Восстанавливаем фиксированных сотрудников и статус админа
         if (fixedEmployees) {
             localStorage.setItem('fixedEmployees', fixedEmployees);
         }
@@ -2136,7 +2225,6 @@ function clearAllData() {
             localStorage.setItem('adminAuthenticated', adminAuthenticated);
         }
         
-        // Сбрасываем переменные
         playersDatabase = [];
         isAdminAuthenticated = adminAuthenticated === 'true';
         
@@ -2699,17 +2787,14 @@ function deleteEmployeeFile(employeeId, folderType, fileId) {
     showMessage('Файл удален', 'success');
 }
 
-// --- ВЕРНУЛИ ОБРАТНО СТРУКТУРУ С ДВУМЯ КОЛОНКАМИ ---
 function renderAdmin() {
     const area = document.getElementById("adminArea");
     const employeesData = loadEmployeesData();
     
-    // Подсчет статистики
     const totalPositions = FIXED_EMPLOYEE_STRUCTURE.length;
     const occupiedPositions = Object.values(employeesData).filter(emp => emp.username !== 'Вакантно').length;
     const vacantPositions = totalPositions - occupiedPositions;
     
-    // Подсчет по типам
     const typeCounts = {
         curator: 0,
         senior_officer: 0,
@@ -2906,7 +2991,6 @@ function renderAdmin() {
                             <ul id="fileList"></ul>
                         </div>
                         
-                        <!-- ВАЖНО: Панель оценки вернул как простой блок, как в старом коде -->
                         <div id="gradingPanel" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
                             <h4>📝 Оценка ответов</h4>
                             <div id="gradingStats" class="grading-stats"></div>
@@ -2927,22 +3011,16 @@ function renderAdmin() {
             </div>
         </div>
         
-        <!-- Просмотр файла (отдельное модальное окно) -->
         <div id="fileViewer" class="modal-overlay" style="display: none;">
-            <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
-                <!-- Содержимое файла будет здесь -->
-            </div>
+            <div class="modal-content" style="max-width: 800px; max-height: 80vh;"></div>
         </div>
     `;
 
-    // Обработчики событий для админ-панели
     document.getElementById("logoutAdminBtn")?.addEventListener("click", logoutAdmin);
     
-    // Инициализация остальных компонентов админ-панели
     initAdminPanel();
     initEmployeesManagement();
     
-    // ДОБАВЛЯЕМ ОБРАБОТЧИКИ КНОПОК
     const searchPlayerBtn = document.getElementById('searchPlayerBtn');
     if (searchPlayerBtn) {
         searchPlayerBtn.addEventListener('click', searchPlayers);
@@ -2956,10 +3034,7 @@ function renderAdmin() {
             }
         });
     }
-    
-    // Кнопка "Удалить все записи" уже имеет onclick обработчик в HTML
 }
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
-
