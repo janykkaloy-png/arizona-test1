@@ -4,7 +4,7 @@
   --accent: #0ea5a4;
   --text: #f8fafc;
   --text-bright: #ffffff;
-  --text-muted: #94a3b8;
+  --text-muted: #d2d5db;
   --btn-hover: #14b8a6;
   --error: #e53e3e;
   --warning: #ffd93d;
@@ -1861,3 +1861,4 @@ input[type="text"]::placeholder {
         max-width: 100%;
     }
 }
+
