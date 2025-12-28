@@ -12,15 +12,15 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Maks_Willov' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
     { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
-    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Matthew_Costeriko' },
-    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Chaffy_Washington' },
-    { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Angel_Extazzy' },
-    { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Chaffy_Washington' },
+    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Angel_Extazzy' },
+    { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Вакантно'' },
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
-    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Aleksandr_Mazeksov' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Hell_Smoke' },
+    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Cheer_Queensight' },
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Crux_Red' },
     { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
@@ -3038,6 +3038,7 @@ function renderAdmin() {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
+
 
 
 
