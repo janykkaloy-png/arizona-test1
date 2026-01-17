@@ -21,7 +21,7 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Matwey_Valhalla' },
     { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Denis_Thompson' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Lolly_Dolly' }
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Akashi_Miyazuki' }
 ];
 
 
@@ -3039,6 +3039,7 @@ function renderAdmin() {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
+
 
 
 
