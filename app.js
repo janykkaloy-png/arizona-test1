@@ -9,10 +9,10 @@ let currentTestType = 'academy';
 let playersDatabase = JSON.parse(localStorage.getItem('playersDatabase') || '[]');
 
 const FIXED_EMPLOYEE_STRUCTURE = [
-    { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Chaffy_Washington' },
+    { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Jan_Abobbi' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Crux_Red' },
-    { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
-    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Cheer_Queensight' },
+    { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Chaffy_Washington' },
+    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Denis_Thompson' },
     { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Goose_Playboy' },
@@ -3039,6 +3039,7 @@ function renderAdmin() {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
+
 
 
 
