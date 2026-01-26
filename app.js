@@ -1,6 +1,6 @@
 // === НАСТРОЙКИ ===
 const TEST_COUNT = 15;
-const ADMIN_PASSWORD = "TryToPassTheExam2025kP9Lm2qR8xZ3ButIfYouLose5202tY6nB4vC7sW1BanForTheWholeLife2520";
+const ADMIN_PASSWORD = "TryX9kTo77PassLm2TheQ8Exam2025RZx3kP9But5IfY6You2LoseN4t5202BvC7BanW1ForTheWholeLife2520";
 const AES_KEY = "my_secret_aes_key_2024";
 const INACTIVITY_TIMEOUT = 20000;
 
@@ -3039,6 +3039,7 @@ function renderAdmin() {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
+
 
 
 
