@@ -18,8 +18,8 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Goose_Playboy' },
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Akashi_Miyazuki' },
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Matwey_Valhalla' },
-    { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
-    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Maximiliano_Alwarez' },
+    { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Maximiliano_Alwarez' },
+    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
     { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Shimura_Nagasama' },
     { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
@@ -3039,6 +3039,7 @@ function renderAdmin() {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
+
 
 
 
