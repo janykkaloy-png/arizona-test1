@@ -24,7 +24,6 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
-
 const examQuestions = [
     { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
     { text: "Как должны разговаривать сотрудники военной полиции?" },
@@ -356,7 +355,8 @@ Arizona RP | Военная Полиция
             reportText += `---------------------------------\n`;
         });
 
-        reportText += `\n
+        reportText += `
+
 =================================
 Arizona RP | Военная Полиция
 Тест оценен администратором`;
@@ -438,9 +438,69 @@ function loadEmployeesData() {
     
     if (saved) {
         employeesData = JSON.parse(saved);
+        
+        // 🔧 АВТОМАТИЧЕСКИЙ ПЕРЕНОС ФАЙЛОВ ПРИ ИЗМЕНЕНИИ ДОЛЖНОСТИ
+        console.log('🔄 Проверка изменений в структуре сотрудников...');
+        
         FIXED_EMPLOYEE_STRUCTURE.forEach(fixedEmp => {
             if (fixedEmp.username !== 'Вакантно') {
-                if (employeesData[fixedEmp.id]) {
+                // Ищем сотрудника с таким же username в текущих данных
+                const existingEmployee = Object.values(employeesData).find(emp => 
+                    emp.username === fixedEmp.username && emp.id !== fixedEmp.id
+                );
+                
+                // Если сотрудник найден на другой должности
+                if (existingEmployee) {
+                    console.log(`🔄 Обнаружен перенос: ${fixedEmp.username} с ${existingEmployee.id} на ${fixedEmp.id}`);
+                    
+                    // Сохраняем все файлы со старой должности
+                    const allFiles = {
+                        academy: [...existingEmployee.files.academy],
+                        exam: [...existingEmployee.files.exam],
+                        retraining: [...existingEmployee.files.retraining]
+                    };
+                    
+                    // Переносим файлы на новую должность
+                    if (!employeesData[fixedEmp.id]) {
+                        // Создаем нового сотрудника если не существует
+                        employeesData[fixedEmp.id] = {
+                            ...fixedEmp,
+                            folders: {
+                                academy: `${fixedEmp.username}_Академия`,
+                                exam: `${fixedEmp.username}_Экзамен`,
+                                retraining: `${fixedEmp.username}_Переаттестация`
+                            },
+                            files: allFiles
+                        };
+                    } else {
+                        // Объединяем существующие файлы с перенесенными
+                        employeesData[fixedEmp.id].files.academy = [
+                            ...employeesData[fixedEmp.id].files.academy,
+                            ...allFiles.academy
+                        ];
+                        employeesData[fixedEmp.id].files.exam = [
+                            ...employeesData[fixedEmp.id].files.exam,
+                            ...allFiles.exam
+                        ];
+                        employeesData[fixedEmp.id].files.retraining = [
+                            ...employeesData[fixedEmp.id].files.retraining,
+                            ...allFiles.retraining
+                        ];
+                        employeesData[fixedEmp.id].username = fixedEmp.username;
+                    }
+                    
+                    // Очищаем старую должность
+                    employeesData[existingEmployee.id].files = {
+                        academy: [], exam: [], retraining: []
+                    };
+                    employeesData[existingEmployee.id].username = 'Вакантно';
+                    
+                    console.log(`✅ Файлы перенесены: Академия(${allFiles.academy.length}), Экзамены(${allFiles.exam.length}), Переатт.(${allFiles.retraining.length})`);
+                }
+                
+                // Обновляем username в данных, если изменилось
+                if (employeesData[fixedEmp.id] && employeesData[fixedEmp.id].username !== fixedEmp.username) {
+                    console.log(`🔄 Обновление username: ${employeesData[fixedEmp.id].username} -> ${fixedEmp.username}`);
                     employeesData[fixedEmp.id].username = fixedEmp.username;
                 }
             }
@@ -927,7 +987,8 @@ function finishTest() {
         reportText += `---------------------------------\n`;
     });
 
-    reportText += `\n
+    reportText += `
+
 =================================
 Arizona RP | Военная Полиция
 Тест завершен`;
@@ -1313,6 +1374,79 @@ function generateReadableCode() {
     return code;
 }
 
+// 🔧 УТИЛИТЫ ДЛЯ РУЧНОГО ПЕРЕНОСА СОТРУДНИКОВ
+function checkEmployeePromotion(oldId, newId, username) {
+    const employeesData = loadEmployeesData();
+    
+    console.log('🔍 ПРОВЕРКА ПОВЫШЕНИЯ СОТРУДНИКА');
+    console.log('Старая должность ID:', oldId);
+    console.log('Новая должность ID:', newId);
+    console.log('Сотрудник:', username);
+    
+    const oldEmployee = employeesData[oldId];
+    const newEmployee = employeesData[newId];
+    
+    if (oldEmployee) {
+        console.log('📁 Файлы на старой должности:');
+        console.log('- Академия:', oldEmployee.files.academy.length, 'файлов');
+        console.log('- Экзамены:', oldEmployee.files.exam.length, 'файлов');
+        console.log('- Переатт.:', oldEmployee.files.retraining.length, 'файлов');
+        
+        // Создаем резервную копию
+        localStorage.setItem(`backup_${username}_${Date.now()}`, 
+            JSON.stringify(oldEmployee.files));
+    }
+    
+    if (newEmployee && newEmployee.username !== 'Вакантно') {
+        console.warn('⚠️ ВНИМАНИЕ: Новая должность уже занята!');
+        console.warn('Текущий сотрудник:', newEmployee.username);
+    }
+    
+    return oldEmployee ? oldEmployee.files : null;
+}
+
+function transferEmployeeFiles(oldId, newId, username) {
+    const employeesData = loadEmployeesData();
+    
+    const oldSlot = employeesData[oldId];
+    const newSlot = employeesData[newId];
+    
+    if (!newSlot || newSlot.username !== username) {
+        console.error('❌ Новый слот не найден или имя не совпадает!');
+        return false;
+    }
+    
+    let allFiles = { academy: [], exam: [], retraining: [] };
+    
+    Object.values(employeesData).forEach(employee => {
+        if (employee.username === username) {
+            ['academy', 'exam', 'retraining'].forEach(folderType => {
+                if (employee.files[folderType]) {
+                    allFiles[folderType] = [
+                        ...allFiles[folderType], 
+                        ...employee.files[folderType]
+                    ];
+                }
+            });
+        }
+    });
+    
+    newSlot.files = allFiles;
+    
+    if (oldSlot) {
+        oldSlot.files = { academy: [], exam: [], retraining: [] };
+    }
+    
+    saveEmployeesData(employeesData);
+    
+    console.log('✅ Файлы перенесены:');
+    console.log('- Академия:', allFiles.academy.length, 'файлов');
+    console.log('- Экзамены:', allFiles.exam.length, 'файлов');
+    console.log('- Переатт.:', allFiles.retraining.length, 'файлов');
+    
+    return true;
+}
+
 function initUI() {
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
@@ -1321,6 +1455,28 @@ function initUI() {
     
     loadTestState();
     updatePlayersDatalist();
+    
+    // 🔧 ОТСЛЕЖИВАНИЕ ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && test && !test.blocked) {
+            console.log('🚫 Пользователь покинул вкладку!');
+            showError("Тест заблокирован! Не переключайте вкладки во время теста.");
+            blockTest();
+        }
+    });
+    
+    // 🔧 ОТСЛЕЖИВАНИЕ ПОТЕРИ ФОКУСА ОКНА
+    window.addEventListener('blur', () => {
+        if (test && !test.blocked) {
+            setTimeout(() => {
+                if (document.hidden && test && !test.blocked) {
+                    console.log('🚫 Окно потеряло фокус!');
+                    showError("Тест заблокирован! Не переключайтесь в другие окна.");
+                    blockTest();
+                }
+            }, 500);
+        }
+    });
     
     document.addEventListener('mousemove', trackActivity);
     document.addEventListener('mousedown', trackActivity);
@@ -1472,7 +1628,6 @@ function initAdminPanel() {
     renderFiles();
 }
 
-// ВАЖНО: ОБНОВЛЕННАЯ ФУНКЦИЯ С КНОПКОЙ ДЛЯ ФАЙЛОВ РАЗБЛОКИРОВКИ
 function renderFiles() {
     const fileList = document.getElementById("fileList");
     if (!fileList) return;
@@ -1510,10 +1665,8 @@ function renderFiles() {
                 <button class="btn small open-btn" data-index="${i}">👁️ Просмотр</button>
                 
                 ${f.name.toLowerCase().includes('разблокировк') ? `
-                    <!-- КНОПКА ДЛЯ ФАЙЛОВ РАЗБЛОКИРОВКИ -->
                     <button class="btn small unlock-save-btn" data-index="${i}">📁 Сохранить в папку</button>
                 ` : `
-                    <!-- КНОПКА ДЛЯ ОБЫЧНЫХ ТЕСТОВ -->
                     <button class="btn small grade-btn" data-index="${i}">📝 ${f.graded ? 'Изменить оценку' : 'Оценить'}</button>
                 `}
                 
@@ -1544,7 +1697,6 @@ function renderFiles() {
         });
     });
 
-    // ДОБАВЛЕН ОБРАБОТЧИК ДЛЯ КНОПКИ РАЗБЛОКИРОВКИ
     document.querySelectorAll(".unlock-save-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
             const index = parseInt(e.target.dataset.index);
@@ -1560,7 +1712,6 @@ function renderFiles() {
     });
 }
 
-// НОВАЯ ФУНКЦИЯ ДЛЯ СОХРАНЕНИЯ ФАЙЛОВ РАЗБЛОКИРОВКИ
 function saveUnlockFileToEmployee(file, fileIndex) {
     try {
         const storedBase64 = file.content;
@@ -3039,28 +3190,3 @@ function renderAdmin() {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
