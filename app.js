@@ -12,7 +12,7 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Jan_Abobbi' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Crux_Red' },
     { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Chaffy_Washington' },
-    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Shimura_Nagasama' },
+    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Denis_Thompson' },
     { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Goose_Playboy' },
@@ -20,7 +20,7 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Matwey_Valhalla' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Maximiliano_Alwarez' },
     { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Shimura_Nagasama' },
     { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
@@ -834,6 +834,7 @@ function renderAcademy() {
                 <h2>📚 Академия Военной Полиции</h2>
                 <p>Введите ваше имя в поле ниже и нажмите "Начать тест" для начала обучения в Академии.</p>
                 <p><strong>Важно:</strong> Система отслеживает активность!</p>
+                <p><strong>Важно:</strong> Данный тест не для курсантов!</p>
                 <p>Тест состоит из 15 случайных вопросов по теоретической подготовке.</p>
             </div>
         `;
@@ -1784,64 +1785,276 @@ function openGradingPanel(file, fileIndex) {
 
         if (decryptedPlain) {
             let answers = file.gradingData || parseAnswersFromReport(decryptedPlain);
-            const correctCount = answers.filter(a => a.correct).length;
             const totalCount = answers.length;
-            const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+            let correctCount = answers.filter(a => a.correct).length;
             
-            gradingStats.innerHTML = `
-                Правильных ответов: ${correctCount}/${totalCount} | Оценка: ${score}%
-                ${file.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
-            `;
+            // Функция обновления статистики
+            const updateStats = () => {
+                correctCount = answers.filter(a => a.correct).length;
+                const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+                
+                // Обновляем статистику
+                gradingStats.innerHTML = `
+                    <div class="live-stats">
+                        <div class="live-counter">
+                            <div class="counter-item">
+                                <div class="counter-value">${correctCount}</div>
+                                <div class="counter-label">Правильно</div>
+                            </div>
+                            <div class="counter-item">
+                                <div class="counter-value">${totalCount - correctCount}</div>
+                                <div class="counter-label">Неправильно</div>
+                            </div>
+                            <div class="counter-item">
+                                <div class="counter-value">${totalCount}</div>
+                                <div class="counter-label">Всего</div>
+                            </div>
+                        </div>
+                        <div class="progress-circle" style="--progress: ${score}%">
+                            <div class="progress-percent">${score}%</div>
+                        </div>
+                    </div>
+                    ${file.graded ? '<div style="text-align: center; color: var(--success); margin-top: 10px;">✓ Оценка сохранена</div>' : ''}
+                `;
+                
+                return score;
+            };
+            
+            // Инициализируем статистику
+            updateStats();
             
             const extractedUsername = extractUsernameFromFilename(file.name);
             const testType = extractTestTypeFromFilename(file.name);
             
-            answersList.innerHTML = answers.map((answer, index) => `
-                <div class="answer-item ${answer.correct ? 'correct' : 'incorrect'}">
-                    <div><strong>Вопрос ${index + 1}:</strong> ${escapeHtml(answer.question)}</div>
-                    <div style="margin: 5px 0;"><strong>Ответ:</strong> ${escapeHtml(answer.answer)}</div>
-                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                        <input type="checkbox" class="correct-checkbox" data-index="${index}" ${answer.correct ? 'checked' : ''}>
-                        <span>✅ Правильный ответ</span>
-                    </label>
-                </div>
-            `).join('') + `
-                <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                    <h4>👤 Определение сотрудника</h4>
-                    <p>Автоматически определено: <strong>${extractedUsername || "Не определено"}</strong></p>
-                    <p>Тип теста: <strong>${getTestTypeName(testType)}</strong></p>
-                    <div style="margin-top: 10px;">
-                        <label style="display: block; margin-bottom: 5px;">Введите имя сотрудника вручную:</label>
-                        <input type="text" id="manualUsernameInput" 
-                               style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white;"
-                               placeholder="Введите ник сотрудника"
-                               value="${extractedUsername || ''}">
+            // Создаем HTML для каждого ответа
+            answersList.innerHTML = `
+                <div class="grading-container">
+                    <div class="quick-grading-actions">
+                        <button class="bulk-action-btn bulk-correct" id="markAllCorrect">
+                            <span>✅</span>
+                            <span>Отметить все как правильные</span>
+                        </button>
+                        <button class="bulk-action-btn bulk-incorrect" id="markAllIncorrect">
+                            <span>❌</span>
+                            <span>Отметить все как неправильные</span>
+                        </button>
+                        <button class="bulk-action-btn bulk-reset" id="resetAll">
+                            <span>🔄</span>
+                            <span>Сбросить все</span>
+                        </button>
+                    </div>
+                    
+                    <div class="grading-hint">
+                        💡 <strong>Подсказка:</strong> Кликните по любому ответу, чтобы изменить его статус. 
+                        Используйте <span class="hotkey">Space</span> для быстрого переключения.
+                    </div>
+                    
+                    ${answers.map((answer, index) => {
+                        const statusClass = answer.correct ? 'correct' : 'incorrect';
+                        const statusText = answer.correct ? 'Правильный' : 'Неправильный';
+                        const statusColor = answer.correct ? 'status-correct' : 'status-incorrect';
+                        
+                        return `
+                            <div class="answer-full-card ${statusClass}" 
+                                 data-index="${index}"
+                                 tabindex="0"
+                                 role="button"
+                                 aria-label="Ответ ${index + 1}: ${statusText}. Нажмите, чтобы изменить статус">
+                                 
+                                <div class="answer-header">
+                                    <div class="question-number">Вопрос ${index + 1}</div>
+                                    <div class="status-indicator ${statusColor}">
+                                        <span>${answer.correct ? '✅' : '❌'}</span>
+                                        <span>${statusText}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="question-text">${escapeHtml(answer.question)}</div>
+                                
+                                <div class="answer-text">${escapeHtml(answer.answer || 'Нет ответа')}</div>
+                                
+                                <div class="answer-actions">
+                                    <label class="toggle-label" onclick="event.stopPropagation()">
+                                        <input type="checkbox" 
+                                               class="toggle-checkbox" 
+                                               data-index="${index}" 
+                                               ${answer.correct ? 'checked' : ''}>
+                                        <span>✅ Правильный ответ</span>
+                                    </label>
+                                    
+                                    <div class="quick-actions">
+                                        <button class="quick-btn quick-correct" data-index="${index}" data-action="correct">
+                                            ✅ Правильно
+                                        </button>
+                                        <button class="quick-btn quick-incorrect" data-index="${index}" data-action="incorrect">
+                                            ❌ Неправильно
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="click-feedback"></div>
+                            </div>
+                        `;
+                    }).join('')}
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <h4>👤 Определение сотрудника</h4>
+                        <p>Автоматически определено: <strong>${extractedUsername || "Не определено"}</strong></p>
+                        <p>Тип теста: <strong>${getTestTypeName(testType)}</strong></p>
+                        <div style="margin-top: 10px;">
+                            <label style="display: block; margin-bottom: 5px;">Введите имя сотрудника вручную:</label>
+                            <input type="text" id="manualUsernameInput" 
+                                   style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white;"
+                                   placeholder="Введите ник сотрудника"
+                                   value="${extractedUsername || ''}">
+                        </div>
                     </div>
                 </div>
             `;
 
-            document.querySelectorAll('.correct-checkbox').forEach(cb => {
-                cb.addEventListener('change', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    answers[index].correct = e.target.checked;
+            // Функция для создания эффекта клика
+            const createClickEffect = (element, x, y) => {
+                const feedback = element.querySelector('.click-feedback');
+                feedback.style.left = `${x}px`;
+                feedback.style.top = `${y}px`;
+                feedback.classList.remove('click-animation');
+                void feedback.offsetWidth; // Триггер reflow
+                feedback.classList.add('click-animation');
+                
+                setTimeout(() => {
+                    feedback.classList.remove('click-animation');
+                }, 500);
+            };
+
+            // Обработчик клика по всей карточке
+            document.querySelectorAll('.answer-full-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('.toggle-label') || e.target.closest('.quick-btn')) {
+                        return; // Не обрабатываем клики по кнопкам внутри
+                    }
                     
-                    const newCorrectCount = answers.filter(a => a.correct).length;
-                    const newScore = Math.round((newCorrectCount / totalCount) * 100);
-                    gradingStats.innerHTML = `
-                        Правильных ответов: ${newCorrectCount}/${totalCount} | Оценка: ${newScore}%
-                        ${file.graded ? '<span style="color: var(--success);">✓ Оценка сохранена</span>' : ''}
-                    `;
+                    const index = parseInt(card.dataset.index);
+                    answers[index].correct = !answers[index].correct;
                     
-                    const answerItem = e.target.closest('.answer-item');
-                    if (e.target.checked) {
-                        answerItem.classList.add('correct');
-                        answerItem.classList.remove('incorrect');
-                    } else {
-                        answerItem.classList.add('incorrect');
-                        answerItem.classList.remove('correct');
+                    // Эффект клика
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    createClickEffect(card, x, y);
+                    
+                    // Обновляем UI
+                    updateAnswerCard(index, answers[index].correct);
+                    updateStats();
+                    
+                    // Звуковой фидбек (опционально)
+                    if (answers[index].correct) {
+                        playSuccessSound();
+                    }
+                });
+                
+                // Обработчик клавиши пробел
+                card.addEventListener('keydown', (e) => {
+                    if (e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        const index = parseInt(card.dataset.index);
+                        answers[index].correct = !answers[index].correct;
+                        
+                        // Эффект в центре карточки
+                        const rect = card.getBoundingClientRect();
+                        createClickEffect(card, rect.width / 2, rect.height / 2);
+                        
+                        updateAnswerCard(index, answers[index].correct);
+                        updateStats();
                     }
                 });
             });
+
+            // Обработчики чекбоксов
+            document.querySelectorAll('.toggle-checkbox').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(e.target.dataset.index);
+                    answers[index].correct = e.target.checked;
+                    updateAnswerCard(index, answers[index].correct);
+                    updateStats();
+                });
+            });
+
+            // Обработчики быстрых кнопок
+            document.querySelectorAll('.quick-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(e.target.dataset.index);
+                    const action = e.target.dataset.action;
+                    answers[index].correct = (action === 'correct');
+                    
+                    const card = document.querySelector(`.answer-full-card[data-index="${index}"]`);
+                    const rect = card.getBoundingClientRect();
+                    createClickEffect(card, rect.width / 2, rect.height / 2);
+                    
+                    updateAnswerCard(index, answers[index].correct);
+                    updateStats();
+                });
+            });
+
+            // Обработчики массовых действий
+            document.getElementById('markAllCorrect')?.addEventListener('click', () => {
+                answers.forEach((answer, index) => {
+                    answer.correct = true;
+                    updateAnswerCard(index, true);
+                });
+                updateStats();
+                showMessage('Все ответы отмечены как правильные', 'success');
+            });
+
+            document.getElementById('markAllIncorrect')?.addEventListener('click', () => {
+                answers.forEach((answer, index) => {
+                    answer.correct = false;
+                    updateAnswerCard(index, false);
+                });
+                updateStats();
+                showMessage('Все ответы отмечены как неправильные', 'warning');
+            });
+
+            document.getElementById('resetAll')?.addEventListener('click', () => {
+                answers.forEach((answer, index) => {
+                    answer.correct = false;
+                    updateAnswerCard(index, false);
+                });
+                updateStats();
+                showMessage('Все ответы сброшены', 'info');
+            });
+
+            // Функция обновления карточки ответа
+            function updateAnswerCard(index, isCorrect) {
+                const card = document.querySelector(`.answer-full-card[data-index="${index}"]`);
+                const checkbox = document.querySelector(`.toggle-checkbox[data-index="${index}"]`);
+                const statusIndicator = card.querySelector('.status-indicator');
+                
+                if (isCorrect) {
+                    card.classList.remove('incorrect');
+                    card.classList.add('correct');
+                    statusIndicator.classList.remove('status-incorrect');
+                    statusIndicator.classList.add('status-correct');
+                    statusIndicator.innerHTML = '<span>✅</span><span>Правильный</span>';
+                } else {
+                    card.classList.remove('correct');
+                    card.classList.add('incorrect');
+                    statusIndicator.classList.remove('status-correct');
+                    statusIndicator.classList.add('status-incorrect');
+                    statusIndicator.innerHTML = '<span>❌</span><span>Неправильный</span>';
+                }
+                
+                if (checkbox) {
+                    checkbox.checked = isCorrect;
+                }
+            }
+
+            // Функция звукового фидбека (опционально)
+            function playSuccessSound() {
+                // Можно добавить звуковые эффекты при желании
+                console.log('✅ Правильный ответ отмечен');
+            }
 
             const saveGradingBtn = document.getElementById("saveGradingBtn");
             const closeGradingBtn = document.getElementById("closeGradingBtn");
@@ -1874,8 +2087,17 @@ function openGradingPanel(file, fileIndex) {
             }
 
             gradingPanel.style.display = 'block';
+            
+            // Фокус на первый ответ для удобства навигации
+            setTimeout(() => {
+                const firstCard = document.querySelector('.answer-full-card');
+                if (firstCard) {
+                    firstCard.focus();
+                }
+            }, 100);
         }
     } catch (error) {
+        console.error('Ошибка при загрузке ответов:', error);
         showError("Ошибка при загрузке ответов для оценки");
     }
 }
@@ -1949,6 +2171,49 @@ function deleteFile(index) {
     }
 }
 
+function playSound(type) {
+    if (typeof Audio !== 'undefined') {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            if (type === 'correct') {
+                // Звук правильного ответа
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 523.25; // Нота C5
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } else if (type === 'incorrect') {
+                // Звук неправильного ответа
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 349.23; // Нота F4
+                oscillator.type = 'sawtooth';
+                
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }
+        } catch (e) {
+            console.log('Аудио не поддерживается');
+        }
+    }
+}
 // --- ФУНКЦИИ ДЛЯ АДМИН-ПАНЕЛИ ---
 
 function calculateStats() {
@@ -1963,6 +2228,11 @@ function calculateStats() {
     if (validResults.length === 0) {
         return getEmptyStats();
     }
+    
+    // Анимируем появление статистики
+    setTimeout(() => {
+        animateStatistics();
+    }, 300);
     
     const uniqueResults = [];
     const seen = new Set();
@@ -2003,9 +2273,9 @@ function calculateStats() {
     const academyCount = academyResults.length;
     const retrainingCount = retrainingResults.length;
     
-    const examRanking = createRanking(examResults, 'Экзамен');
-    const academyRanking = createRanking(academyResults, 'Академия');
-    const retrainingRanking = createRanking(retrainingResults, 'Переаттестация');
+    const examRanking = createAnimatedRanking(examResults, 'Экзамен');
+    const academyRanking = createAnimatedRanking(academyResults, 'Академия');
+    const retrainingRanking = createAnimatedRanking(retrainingResults, 'Переаттестация');
     
     const gradeDistribution = {
         excellent: uniqueResults.filter(f => f.score >= 90).length,
@@ -2026,10 +2296,25 @@ function calculateStats() {
             time: formatTime(f.timeSpent || 15)
         }));
     
+    // Рассчитываем тренды
+    const lastMonthResults = uniqueResults.filter(result => {
+        const resultDate = new Date(result.date);
+        const monthAgo = new Date();
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        return resultDate > monthAgo;
+    });
+    
+    const lastMonthPassRate = lastMonthResults.length > 0 
+        ? Math.round((lastMonthResults.filter(f => f.passed).length / lastMonthResults.length) * 100)
+        : passRate;
+    
+    const passRateTrend = passRate > lastMonthPassRate ? 'up' : 'down';
+    
     return {
         totalTests: uniqueResults.length,
         averageScore,
         passRate,
+        passRateTrend,
         examCount,
         academyCount,
         retrainingCount,
@@ -2042,32 +2327,66 @@ function calculateStats() {
         recentResults,
         examRanking,
         academyRanking,
-        retrainingRanking
+        retrainingRanking,
+        examPassRate: examResults.length > 0 ? Math.round((examResults.filter(f => f.passed).length / examResults.length) * 100) : 0,
+        academyPassRate: academyResults.length > 0 ? Math.round((academyResults.filter(f => f.passed).length / academyResults.length) * 100) : 0,
+        retrainingPassRate: retrainingResults.length > 0 ? Math.round((retrainingResults.filter(f => f.passed).length / retrainingResults.length) * 100) : 0,
+        lastUpdated: new Date().toLocaleString('ru-RU')
     };
 }
 
-function getEmptyStats() {
-    return {
-        totalTests: 0,
-        averageScore: 0,
-        passRate: 0,
-        examCount: 0,
-        academyCount: 0,
-        retrainingCount: 0,
-        minScore: 0,
-        maxScore: 0,
-        minTime: "0:00",
-        maxTime: "0:00", 
-        averageTime: "0:00",
-        gradeDistribution: { excellent: 0, good: 0, satisfactory: 0, fail: 0 },
-        recentResults: [],
-        examRanking: [],
-        academyRanking: [],
-        retrainingRanking: []
-    };
+function animateStatistics() {
+    // Анимация счетчиков
+    const counters = document.querySelectorAll('.stat-number');
+    counters.forEach(counter => {
+        const finalValue = parseInt(counter.textContent);
+        const duration = 1500;
+        const startTime = Date.now();
+        
+        const animate = () => {
+            const currentTime = Date.now();
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 3); // Кубическое замедление
+            
+            const currentValue = Math.floor(easeProgress * finalValue);
+            counter.textContent = currentValue;
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                counter.textContent = finalValue;
+            }
+        };
+        
+        animate();
+    });
+    
+    // Анимация прогресс-баров
+    const progressBars = document.querySelectorAll('.progress-bar');
+    progressBars.forEach(bar => {
+        const width = bar.style.width;
+        bar.style.width = '0%';
+        setTimeout(() => {
+            bar.style.width = width;
+            bar.style.setProperty('--progress-width', width);
+        }, 300);
+    });
+    
+    // Анимация появления карточек
+    const cards = document.querySelectorAll('.stat-card, .ranking-item');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+    });
+    
+    // Анимация круговой диаграммы
+    const pieChart = document.querySelector('.pie-chart');
+    if (pieChart) {
+        pieChart.style.animation = 'rotate 20s linear infinite';
+    }
 }
 
-function createRanking(results, type) {
+function createAnimatedRanking(results, type) {
     if (results.length === 0) return [];
     
     return results
@@ -2078,123 +2397,215 @@ function createRanking(results, type) {
             date: new Date(result.date).toLocaleString('ru-RU'),
             time: `${result.timeSpent || 15} мин`,
             correctAnswers: result.correctAnswers || 0,
-            totalAnswers: result.totalAnswers || 15
+            totalAnswers: result.totalAnswers || 15,
+            initials: getInitials(result.username)
         }))
-        .sort((a, b) => a.score - b.score)
+        .sort((a, b) => b.score - a.score)
         .map((result, index) => ({
             ...result,
             rank: index + 1,
-            position: `${index + 1}/${results.length}`
+            position: `${index + 1}/${results.length}`,
+            isTop3: index < 3
         }));
+}
+
+function getInitials(username) {
+    const parts = username.split(/[_\s-]/);
+    return parts.map(part => part.charAt(0).toUpperCase()).join('').slice(0, 2);
+}
+
+function getEmptyStats() {
+    return {
+        totalTests: 0,
+        averageScore: 0,
+        passRate: 0,
+        passRateTrend: 'up',
+        examCount: 0,
+        academyCount: 0,
+        retrainingCount: 0,
+        minScore: 0,
+        maxScore: 0,
+        minTime: "0:00",
+        maxTime: "0:00",
+        averageTime: "0:00",
+        gradeDistribution: { excellent: 0, good: 0, satisfactory: 0, fail: 0 },
+        recentResults: [],
+        examRanking: [],
+        academyRanking: [],
+        retrainingRanking: [],
+        examPassRate: 0,
+        academyPassRate: 0,
+        retrainingPassRate: 0,
+        lastUpdated: new Date().toLocaleString('ru-RU')
+    };
 }
 
 function renderGradeDistribution(distribution) {
     const total = Object.values(distribution).reduce((a, b) => a + b, 0);
-    if (total === 0) return '<p style="text-align: center; color: var(--text-muted);">Нет данных</p>';
+    if (total === 0) return '<p class="no-data">📊 Нет данных для отображения</p>';
+    
+    const percentages = {
+        excellent: Math.round((distribution.excellent / total) * 100),
+        good: Math.round((distribution.good / total) * 100),
+        satisfactory: Math.round((distribution.satisfactory / total) * 100),
+        fail: Math.round((distribution.fail / total) * 100)
+    };
     
     return `
-        <div class="distribution-bar">
-            <div class="dist-item">
-                <span>Отлично (90-100%)</span>
-                <div class="bar-container">
-                    <div class="bar excellent" style="width: ${(distribution.excellent / total) * 100}%"></div>
-                </div>
-                <span>${distribution.excellent}</span>
+        <div class="pie-chart" style="
+            --excellent: ${percentages.excellent};
+            --good: ${percentages.good};
+            --satisfactory: ${percentages.satisfactory};
+        ">
+            <div class="chart-center">
+                ${total}
             </div>
-            <div class="dist-item">
-                <span>Хорошо (70-89%)</span>
-                <div class="bar-container">
-                    <div class="bar good" style="width: ${(distribution.good / total) * 100}%"></div>
-                </div>
-                <span>${distribution.good}</span>
+        </div>
+        
+        <div class="chart-legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: var(--success);"></div>
+                <span>Отлично (${distribution.excellent})</span>
+                <strong>${percentages.excellent}%</strong>
             </div>
-            <div class="dist-item">
-                <span>Удовл. (50-69%)</span>
-                <div class="bar-container">
-                    <div class="bar satisfactory" style="width: ${(distribution.satisfactory / total) * 100}%"></div>
-                </div>
-                <span>${distribution.satisfactory}</span>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3b82f6;"></div>
+                <span>Хорошо (${distribution.good})</span>
+                <strong>${percentages.good}%</strong>
             </div>
-            <div class="dist-item">
-                <span>Неудовл. (0-49%)</span>
-                <div class="bar-container">
-                    <div class="bar fail" style="width: ${(distribution.fail / total) * 100}%"></div>
-                </div>
-                <span>${distribution.fail}</span>
+            <div class="legend-item">
+                <div class="legend-color" style="background: var(--warning);"></div>
+                <span>Удовл. (${distribution.satisfactory})</span>
+                <strong>${percentages.satisfactory}%</strong>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: var(--error);"></div>
+                <span>Неудовл. (${distribution.fail})</span>
+                <strong>${percentages.fail}%</strong>
             </div>
         </div>
     `;
 }
 
 function renderRecentResults(results) {
-    if (results.length === 0) return '<p style="text-align: center; color: var(--text-muted);">Нет данных</p>';
+    if (results.length === 0) return '<p class="no-data">⏳ Пока нет завершенных тестов</p>';
     
-    return results.map(result => `
-        <div class="recent-result ${result.passed ? 'passed' : 'failed'}">
-            <div class="result-info">
-                <strong>${result.name}</strong>
-                <span class="result-type">${result.type}</span>
+    return results.map((result, index) => `
+        <div class="timeline-item" style="animation-delay: ${index * 0.1}s">
+            <div class="timeline-date">${result.date}</div>
+            <div class="timeline-content">
+                <strong>${result.name}</strong> - ${result.type}
+                <div class="trend-indicator ${result.score >= 70 ? 'up' : 'down'}">
+                    <span class="trend-arrow">${result.score >= 70 ? '↗' : '↘'}</span>
+                    <span>${result.score}%</span>
+                    <span>(${result.time})</span>
+                </div>
             </div>
-            <div class="result-score ${result.score >= 70 ? 'score-good' : 'score-bad'}">
-                ${result.score}%
-            </div>
-            <div class="result-date">${result.date}</div>
         </div>
     `).join('');
 }
 
 function renderRanking(ranking, type) {
     if (ranking.length === 0) {
-        return `<p style="text-align: center; color: var(--text-muted); padding: 20px;">
-                   Нет данных по ${type === 'exam' ? 'экзаменам' : type === 'academy' ? 'академии' : 'переаттестации'}
-               </p>`;
+        return `<div class="no-data-message">
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>`;
     }
     
-    const worstResults = ranking.slice(0, 10);
-    const bestResults = ranking.slice(-5).reverse();
+    const top3 = ranking.slice(0, 3);
+    const rest = ranking.slice(3, 10);
     
     return `
-        <div class="ranking-container">
-            <div class="ranking-group">
-                <h5 style="color: var(--error); margin-bottom: 10px;">⬇️ Худшие результаты</h5>
-                ${worstResults.map(result => `
-                    <div class="ranking-item ${result.passed ? '' : 'failed'}">
-                        <div class="rank-badge rank-${result.rank}">${result.rank}</div>
-                        <div class="ranking-info">
-                            <div class="ranking-name">${escapeHtml(result.username)}</div>
-                            <div class="ranking-details">
-                                <span class="ranking-score ${result.score >= 70 ? 'score-good' : 'score-bad'}">
-                                    ${result.score}%
-                                </span>
-                                <span class="ranking-time">${result.time}</span>
-                            </div>
-                        </div>
-                        <div class="ranking-answers">
-                            ${result.correctAnswers}/${result.totalAnswers}
+        <div class="ranking-animated">
+            ${top3.map((result, index) => `
+                <div class="ranking-item top-3" style="animation-delay: ${index * 0.2}s">
+                    <div class="ranking-avatar">
+                        ${result.initials}
+                    </div>
+                    <div class="ranking-info">
+                        <div class="ranking-name">${result.username}</div>
+                        <div class="ranking-details">
+                            <span class="ranking-score">${result.score}%</span>
+                            <span>${result.time}</span>
+                            <span>${result.correctAnswers}/${result.totalAnswers}</span>
                         </div>
                     </div>
-                `).join('')}
+                    <div class="ranking-medal">
+                        ${index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                    </div>
+                </div>
+            `).join('')}
+            
+            ${rest.map((result, index) => `
+                <div class="ranking-item" style="animation-delay: ${0.6 + index * 0.1}s">
+                    <div class="ranking-avatar">
+                        ${result.initials}
+                    </div>
+                    <div class="ranking-info">
+                        <div class="ranking-name">${result.username}</div>
+                        <div class="ranking-details">
+                            <span class="ranking-score">${result.score}%</span>
+                            <span>${result.time}</span>
+                        </div>
+                    </div>
+                    <div class="ranking-position">#${result.rank}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderStatsProgress(stats) {
+    return `
+        <div class="progress-bars">
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>📊 Общая проходимость</span>
+                    <span>${stats.passRate}%</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${stats.passRate}%; background: ${stats.passRate >= 70 ? 'var(--success)' : stats.passRate >= 50 ? 'var(--warning)' : 'var(--error)'}">
+                        <span class="progress-percent">${stats.passRate}%</span>
+                    </div>
+                </div>
             </div>
             
-            <div class="ranking-group" style="margin-top: 20px;">
-                <h5 style="color: var(--success); margin-bottom: 10px;">⬆️ Лучшие результаты</h5>
-                ${bestResults.map(result => `
-                    <div class="ranking-item ${result.passed ? 'excellent' : ''}">
-                        <div class="rank-badge rank-top">${result.rank}</div>
-                        <div class="ranking-info">
-                            <div class="ranking-name">${escapeHtml(result.username)}</div>
-                            <div class="ranking-details">
-                                <span class="ranking-score score-excellent">
-                                    ${result.score}%
-                                </span>
-                                <span class="ranking-time">${result.time}</span>
-                            </div>
-                        </div>
-                        <div class="ranking-answers">
-                            ${result.correctAnswers}/${result.totalAnswers}
-                        </div>
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>🎓 Экзамены</span>
+                    <span>${stats.examPassRate}%</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${stats.examPassRate}%; background: var(--accent)">
+                        <span class="progress-percent">${stats.examPassRate}%</span>
                     </div>
-                `).join('')}
+                </div>
+            </div>
+            
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>📚 Академия</span>
+                    <span>${stats.academyPassRate}%</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${stats.academyPassRate}%; background: #f59e0b">
+                        <span class="progress-percent">${stats.academyPassRate}%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>🔄 Переаттестация</span>
+                    <span>${stats.retrainingPassRate}%</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${stats.retrainingPassRate}%; background: #8b5cf6">
+                        <span class="progress-percent">${stats.retrainingPassRate}%</span>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -2210,7 +2621,7 @@ function renderPendingTests() {
     return `
         <div class="pending-list">
             ${pendingResults.map((test, index) => `
-                <div class="pending-item">
+                <div class="pending-item" style="animation-delay: ${index * 0.1}s">
                     <div class="pending-info">
                         <strong>${escapeHtml(test.username)}</strong>
                         <span class="pending-type">${getTestTypeName(test.testType)}</span>
@@ -2243,8 +2654,8 @@ function renderPlayersList(searchTerm = '') {
     
     return `
         <div class="players-grid">
-            ${filteredPlayers.map(player => `
-                <div class="player-card">
+            ${filteredPlayers.map((player, index) => `
+                <div class="player-card" style="animation-delay: ${index * 0.1}s">
                     <div class="player-header">
                         <strong>${escapeHtml(player.username)}</strong>
                         <span class="player-id">ID: ${player.id.slice(-6)}</span>
@@ -2942,25 +3353,11 @@ function deleteEmployeeFile(employeeId, folderType, fileId) {
 function renderAdmin() {
     const area = document.getElementById("adminArea");
     const employeesData = loadEmployeesData();
+    const stats = calculateStats();
     
     const totalPositions = FIXED_EMPLOYEE_STRUCTURE.length;
     const occupiedPositions = Object.values(employeesData).filter(emp => emp.username !== 'Вакантно').length;
     const vacantPositions = totalPositions - occupiedPositions;
-    
-    const typeCounts = {
-        curator: 0,
-        senior_officer: 0,
-        officer: 0,
-        cadet: 0
-    };
-    
-    Object.values(employeesData).forEach(emp => {
-        if (emp.username !== 'Вакантно') {
-            typeCounts[emp.type]++;
-        }
-    });
-
-    const stats = calculateStats();
     
     area.innerHTML = `
         <div class="admin-container">
@@ -3004,103 +3401,76 @@ function renderAdmin() {
                     </div>
                     
                     <!-- БЛОК СТАТИСТИКИ -->
-                    <div style="margin-bottom: 30px;">
+                    <div class="stats-container">
                         <h3>📈 Статистика тестирования</h3>
                         
-                        <!-- ОСНОВНЫЕ МЕТРИКИ -->
+                        <!-- Ключевые метрики с анимацией -->
                         <div class="stats-grid">
                             <div class="stat-card">
-                                <div class="stat-number">${stats.totalTests}</div>
+                                <div class="stat-icon">📊</div>
+                                <div class="stat-number animated">${stats.totalTests}</div>
                                 <div class="stat-label">Всего тестов</div>
+                                <div class="stat-trend">Обновлено сегодня</div>
                             </div>
+                            
                             <div class="stat-card">
-                                <div class="stat-number">${stats.averageScore}%</div>
+                                <div class="stat-icon">🎯</div>
+                                <div class="stat-number animated">${stats.averageScore}%</div>
                                 <div class="stat-label">Средний балл</div>
+                                <div class="stat-trend ${stats.passRateTrend === 'up' ? 'trend-up' : 'trend-down'}">
+                                    ${stats.passRateTrend === 'up' ? '↗ Рост' : '↘ Снижение'}
+                                </div>
                             </div>
+                            
                             <div class="stat-card">
-                                <div class="stat-number">${stats.passRate}%</div>
+                                <div class="stat-icon">✅</div>
+                                <div class="stat-number animated">${stats.passRate}%</div>
                                 <div class="stat-label">Проходимость</div>
+                                <div class="small">${stats.totalTests > 0 ? stats.passRate + '% успешно' : 'Нет данных'}</div>
                             </div>
+                            
                             <div class="stat-card">
-                                <div class="stat-number">${stats.averageTime}</div>
+                                <div class="stat-icon">⏱️</div>
+                                <div class="stat-number animated">${stats.averageTime.split(':')[0]}</div>
                                 <div class="stat-label">Среднее время</div>
+                                <div class="small">${stats.averageTime}</div>
                             </div>
                         </div>
                         
-                        <!-- Дополнительная статистика -->
-                        <div class="extended-stats">
-                            <div class="stat-row">
-                                <div class="stat-item">
-                                    <span class="stat-title">📊 Баллы:</span>
-                                    <div class="stat-values">
-                                        <span>Мин: <strong>${stats.minScore}%</strong></span>
-                                        <span>Макс: <strong>${stats.maxScore}%</strong></span>
-                                    </div>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-title">⏱️ Время:</span>
-                                    <div class="stat-values">
-                                        <span>Мин: <strong>${stats.minTime}</strong></span>
-                                        <span>Макс: <strong>${stats.maxTime}</strong></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- ТИПЫ ТЕСТОВ -->
-                        <div class="test-types">
-                            <div class="type-card exam">
-                                <div class="type-icon">🎓</div>
-                                <div class="type-info">
-                                    <div class="type-count">${stats.examCount}</div>
-                                    <div class="type-label">Экзамены</div>
-                                </div>
-                            </div>
-                            <div class="type-card academy">
-                                <div class="type-icon">📚</div>
-                                <div class="type-info">
-                                    <div class="type-count">${stats.academyCount}</div>
-                                    <div class="type-label">Академия</div>
-                                </div>
-                            </div>
-                            <div class="type-card">
-                                <div class="type-icon">🔄</div>
-                                <div class="type-info">
-                                    <div class="type-count">${stats.retrainingCount}</div>
-                                    <div class="type-label">Переаттестация</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- ДЕТАЛЬНАЯ СТАТИСТИКА -->
-                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div class="stat-section">
+                        <!-- Детальная статистика -->
+                        <div class="chart-container">
+                            <div class="chart-card">
                                 <h4>📊 Распределение оценок</h4>
-                                <div class="grade-distribution">
-                                    ${renderGradeDistribution(stats.gradeDistribution)}
-                                </div>
+                                ${renderGradeDistribution(stats.gradeDistribution)}
                             </div>
-                            <div class="stat-section">
-                                <h4>🎯 Последние результаты</h4>
-                                <div class="recent-results">
-                                    ${renderRecentResults(stats.recentResults)}
-                                </div>
+                            
+                            <div class="chart-card">
+                                <h4>📈 Прогресс по типам тестов</h4>
+                                ${renderStatsProgress(stats)}
                             </div>
                         </div>
                         
-                        <!-- РЕЙТИНГИ ТЕСТОВ -->
-                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div class="stat-section">
-                                <h4>📋 Рейтинг экзаменов</h4>
-                                <div class="ranking-list">
+                        <!-- Рейтинги и последние результаты -->
+                        <div class="chart-container">
+                            <div class="chart-card">
+                                <h4>🏆 Топ-10 результатов</h4>
+                                <div class="ranking-tabs">
+                                    <button class="btn small active" onclick="switchRankingTab('exam')">🎓 Экзамены</button>
+                                    <button class="btn small" onclick="switchRankingTab('academy')">📚 Академия</button>
+                                    <button class="btn small" onclick="switchRankingTab('retraining')">🔄 Переатт.</button>
+                                </div>
+                                <div id="rankingContent">
                                     ${renderRanking(stats.examRanking, 'exam')}
                                 </div>
                             </div>
                             
-                            <div class="stat-section">
-                                <h4>📋 Рейтинг академии</h4>
-                                <div class="ranking-list">
-                                    ${renderRanking(stats.academyRanking, 'academy')}
+                            <div class="chart-card">
+                                <h4>🕒 Последние тесты</h4>
+                                <div class="timeline">
+                                    ${renderRecentResults(stats.recentResults)}
+                                </div>
+                                <div class="small" style="text-align: center; margin-top: 15px;">
+                                    Обновлено: ${stats.lastUpdated}
                                 </div>
                             </div>
                         </div>
@@ -3186,9 +3556,56 @@ function renderAdmin() {
             }
         });
     }
+    
+    // Добавляем обработчики для переключения вкладок рейтинга
+    const rankingTabs = document.querySelectorAll('.ranking-tabs .btn');
+    rankingTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            rankingTabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            const type = this.textContent.includes('Экзамен') ? 'exam' : 
+                        this.textContent.includes('Академия') ? 'academy' : 'retraining';
+            switchRankingTab(type);
+        });
+    });
+}
+
+function switchRankingTab(type) {
+    const stats = calculateStats();
+    let ranking;
+    let title;
+    
+    switch(type) {
+        case 'exam':
+            ranking = stats.examRanking;
+            title = '🎓 Экзамены';
+            break;
+        case 'academy':
+            ranking = stats.academyRanking;
+            title = '📚 Академия';
+            break;
+        case 'retraining':
+            ranking = stats.retrainingRanking;
+            title = '🔄 Переаттестация';
+            break;
+        default:
+            ranking = stats.examRanking;
+            title = '🎓 Экзамены';
+    }
+    
+    const rankingContent = document.getElementById('rankingContent');
+    if (rankingContent) {
+        rankingContent.innerHTML = renderRanking(ranking, type);
+        
+        // Анимируем новые элементы
+        setTimeout(() => {
+            const items = rankingContent.querySelectorAll('.ranking-item');
+            items.forEach((item, index) => {
+                item.style.animationDelay = `${index * 0.1}s`;
+            });
+        }, 100);
+    }
 }
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
-
-
