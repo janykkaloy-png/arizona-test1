@@ -442,69 +442,182 @@ function loadEmployeesData() {
         // 🔧 АВТОМАТИЧЕСКИЙ ПЕРЕНОС ФАЙЛОВ ПРИ ИЗМЕНЕНИИ ДОЛЖНОСТИ
         console.log('🔄 Проверка изменений в структуре сотрудников...');
         
+        // Создаем карту username -> новая должность
+        const usernameToNewPosition = {};
         FIXED_EMPLOYEE_STRUCTURE.forEach(fixedEmp => {
             if (fixedEmp.username !== 'Вакантно') {
-                // Ищем сотрудника с таким же username в текущих данных
-                const existingEmployee = Object.values(employeesData).find(emp => 
-                    emp.username === fixedEmp.username && emp.id !== fixedEmp.id
-                );
+                usernameToNewPosition[fixedEmp.username] = {
+                    id: fixedEmp.id,
+                    position: fixedEmp.position,
+                    type: fixedEmp.type
+                };
+            }
+        });
+        
+        // Ищем всех сотрудников, которые изменили должность
+        const movedEmployees = [];
+        
+        Object.values(employeesData).forEach(oldEmp => {
+            const oldUsername = oldEmp.username;
+            if (oldUsername !== 'Вакантно' && usernameToNewPosition[oldUsername]) {
+                const newPosition = usernameToNewPosition[oldUsername];
                 
-                // Если сотрудник найден на другой должности
-                if (existingEmployee) {
-                    console.log(`🔄 Обнаружен перенос: ${fixedEmp.username} с ${existingEmployee.id} на ${fixedEmp.id}`);
+                // Если сотрудник на другой должности
+                if (oldEmp.id !== newPosition.id) {
+                    movedEmployees.push({
+                        oldId: oldEmp.id,
+                        newId: newPosition.id,
+                        username: oldUsername,
+                        files: { ...oldEmp.files }
+                    });
                     
-                    // Сохраняем все файлы со старой должности
-                    const allFiles = {
-                        academy: [...existingEmployee.files.academy],
-                        exam: [...existingEmployee.files.exam],
-                        retraining: [...existingEmployee.files.retraining]
-                    };
-                    
-                    // Переносим файлы на новую должность
-                    if (!employeesData[fixedEmp.id]) {
-                        // Создаем нового сотрудника если не существует
-                        employeesData[fixedEmp.id] = {
-                            ...fixedEmp,
-                            folders: {
-                                academy: `${fixedEmp.username}_Академия`,
-                                exam: `${fixedEmp.username}_Экзамен`,
-                                retraining: `${fixedEmp.username}_Переаттестация`
-                            },
-                            files: allFiles
-                        };
-                    } else {
-                        // Объединяем существующие файлы с перенесенными
-                        employeesData[fixedEmp.id].files.academy = [
-                            ...employeesData[fixedEmp.id].files.academy,
-                            ...allFiles.academy
-                        ];
-                        employeesData[fixedEmp.id].files.exam = [
-                            ...employeesData[fixedEmp.id].files.exam,
-                            ...allFiles.exam
-                        ];
-                        employeesData[fixedEmp.id].files.retraining = [
-                            ...employeesData[fixedEmp.id].files.retraining,
-                            ...allFiles.retraining
-                        ];
-                        employeesData[fixedEmp.id].username = fixedEmp.username;
-                    }
-                    
-                    // Очищаем старую должность
-                    employeesData[existingEmployee.id].files = {
-                        academy: [], exam: [], retraining: []
-                    };
-                    employeesData[existingEmployee.id].username = 'Вакантно';
-                    
-                    console.log(`✅ Файлы перенесены: Академия(${allFiles.academy.length}), Экзамены(${allFiles.exam.length}), Переатт.(${allFiles.retraining.length})`);
-                }
-                
-                // Обновляем username в данных, если изменилось
-                if (employeesData[fixedEmp.id] && employeesData[fixedEmp.id].username !== fixedEmp.username) {
-                    console.log(`🔄 Обновление username: ${employeesData[fixedEmp.id].username} -> ${fixedEmp.username}`);
-                    employeesData[fixedEmp.id].username = fixedEmp.username;
+                    console.log(`🔄 Обнаружен перенос: ${oldUsername} с ${oldEmp.position} на ${newPosition.position}`);
                 }
             }
         });
+        
+        // Обрабатываем перенос файлов
+        movedEmployees.forEach(move => {
+            const oldEmp = employeesData[move.oldId];
+            const newEmpSlot = employeesData[move.newId];
+            
+            if (oldEmp && newEmpSlot) {
+                console.log(`📁 Перенос файлов для ${move.username}:`);
+                console.log(`- Академия: ${move.files.academy.length} файлов`);
+                console.log(`- Экзамены: ${move.files.exam.length} файлов`);
+                console.log(`- Переатт.: ${move.files.retraining.length} файлов`);
+                
+                // Если новый слот уже занят другим сотрудником
+                if (newEmpSlot.username !== 'Вакантно' && newEmpSlot.username !== move.username) {
+                    console.warn(`⚠️ ВНИМАНИЕ: Новая должность ${newEmpSlot.position} уже занята ${newEmpSlot.username}!`);
+                    
+                    // Ищем вакантное место для нового сотрудника
+                    const vacantSlot = Object.values(employeesData).find(emp => 
+                        emp.type === newEmpSlot.type && emp.username === 'Вакантно'
+                    );
+                    
+                    if (vacantSlot) {
+                        console.log(`🔁 Найден вакантный слот для ${move.username}: ${vacantSlot.position}`);
+                        // Переносим нового сотрудника на вакантное место
+                        vacantSlot.username = newEmpSlot.username;
+                        vacantSlot.files = { ...newEmpSlot.files };
+                        
+                        // Очищаем оригинальный слот
+                        newEmpSlot.username = 'Вакантно';
+                        newEmpSlot.files = { academy: [], exam: [], retraining: [] };
+                    }
+                }
+                
+                // Переносим файлы на новую должность
+                newEmpSlot.files = { ...move.files };
+                newEmpSlot.username = move.username;
+                
+                // Очищаем старую должность
+                oldEmp.username = 'Вакантно';
+                oldEmp.files = {
+                    academy: [],
+                    exam: [],
+                    retraining: []
+                };
+                
+                // Обновляем папки
+                newEmpSlot.folders = {
+                    academy: `${move.username}_Академия`,
+                    exam: `${move.username}_Экзамен`,
+                    retraining: `${move.username}_Переаттестация`
+                };
+                
+                console.log(`✅ Файлы успешно перенесены на ${newEmpSlot.position}`);
+            }
+        });
+        
+        // Обновляем username для фиксированных сотрудников
+        FIXED_EMPLOYEE_STRUCTURE.forEach(fixedEmp => {
+            if (employeesData[fixedEmp.id] && employeesData[fixedEmp.id].username !== fixedEmp.username) {
+                // Если username изменилось в структуре
+                if (fixedEmp.username !== 'Вакантно') {
+                    const oldUsername = employeesData[fixedEmp.id].username;
+                    console.log(`🔄 Обновление username: ${oldUsername} -> ${fixedEmp.username}`);
+                    
+                    // Сохраняем файлы если они есть
+                    const existingFiles = employeesData[fixedEmp.id].files;
+                    
+                    employeesData[fixedEmp.id].username = fixedEmp.username;
+                    employeesData[fixedEmp.id].folders = {
+                        academy: `${fixedEmp.username}_Академия`,
+                        exam: `${fixedEmp.username}_Экзамен`,
+                        retraining: `${fixedEmp.username}_Переаттестация`
+                    };
+                    employeesData[fixedEmp.id].files = existingFiles;
+                }
+            }
+        });
+        
+        // 🔄 ПРОВЕРКА И ОЧИСТКА КУРСАНТСКИХ ПАПОК
+        console.log('🧹 Проверка и очистка курсантских папок...');
+        Object.values(employeesData).forEach(emp => {
+            // Если это позиция курсанта (cadet_1, cadet_2, cadet_3)
+            if (emp.id.includes('cadet') && emp.username === 'Вакантно') {
+                // Проверяем, нет ли файлов у вакантного курсанта
+                const totalFiles = (emp.files.academy?.length || 0) + 
+                                  (emp.files.exam?.length || 0) + 
+                                  (emp.files.retraining?.length || 0);
+                
+                if (totalFiles > 0) {
+                    console.log(`🧹 Очистка файлов у вакантного курсанта ${emp.position}: ${totalFiles} файлов`);
+                    
+                    // Находим владельца этих файлов по содержимому
+                    const allFiles = [
+                        ...(emp.files.academy || []),
+                        ...(emp.files.exam || []),
+                        ...(emp.files.retraining || [])
+                    ];
+                    
+                    // Ищем в файлах упоминания имен
+                    allFiles.forEach(file => {
+                        const fileContent = file.content || '';
+                        const nameMatch = fileContent.match(/Имя[:\s]+([^\n]+)/i) || 
+                                         fileContent.match(/Имя пользователя[:\s]+([^\n]+)/i);
+                        
+                        if (nameMatch) {
+                            const foundName = nameMatch[1].trim();
+                            console.log(`🔍 В файле ${file.name} найдено имя: ${foundName}`);
+                            
+                            // Ищем сотрудника с этим именем
+                            const realOwner = Object.values(employeesData).find(e => 
+                                e.username !== 'Вакантно' && 
+                                e.username.toLowerCase() === foundName.toLowerCase()
+                            );
+                            
+                            if (realOwner) {
+                                console.log(`✅ Найден реальный владелец: ${realOwner.username} (${realOwner.position})`);
+                                // Переносим файл реальному владельцу
+                                const fileType = file.name.toLowerCase().includes('академи') ? 'academy' :
+                                               file.name.toLowerCase().includes('экзамен') ? 'exam' :
+                                               file.name.toLowerCase().includes('переатт') ? 'retraining' : 'academy';
+                                
+                                if (!realOwner.files[fileType]) {
+                                    realOwner.files[fileType] = [];
+                                }
+                                
+                                realOwner.files[fileType].push(file);
+                                console.log(`📦 Файл ${file.name} перенесен ${realOwner.username}`);
+                            }
+                        }
+                    });
+                    
+                    // Очищаем курсантскую папку
+                    emp.files = {
+                        academy: [],
+                        exam: [],
+                        retraining: []
+                    };
+                    
+                    console.log(`✅ Папка курсанта ${emp.position} очищена`);
+                }
+            }
+        });
+        
     } else {
         employeesData = {};
         FIXED_EMPLOYEE_STRUCTURE.forEach(emp => {
@@ -1737,7 +1850,6 @@ function saveUnlockFileToEmployee(file, fileIndex) {
         
         if (!username || username === '' || username === 'Вакантно') {
             showError("Не удалось определить имя сотрудника из файла!");
-            return;
         }
 
         showEmployeeSelectionModal(
@@ -3350,6 +3462,488 @@ function deleteEmployeeFile(employeeId, folderType, fileId) {
     showMessage('Файл удален', 'success');
 }
 
+// === ФУНКЦИЯ ДЛЯ СБОРА ВСЕХ ФАЙЛОВ ===
+function getAllFilesFromEmployees() {
+    const employeesData = loadEmployeesData();
+    const allFiles = [];
+    
+    Object.values(employeesData).forEach(emp => {
+        if (emp.username !== 'Вакантно' && emp.files) {
+            // Собираем файлы из всех папок
+            ['academy', 'exam', 'retraining'].forEach(folderType => {
+                if (emp.files[folderType] && Array.isArray(emp.files[folderType])) {
+                    emp.files[folderType].forEach(file => {
+                        allFiles.push({
+                            ...file,
+                            employeeId: emp.id,
+                            employeeUsername: emp.username,
+                            employeePosition: emp.position,
+                            folderType: folderType,
+                            folderName: getTestTypeName(folderType),
+                            // Для сортировки по дате
+                            sortDate: file.id ? parseInt(file.id) : Date.now()
+                        });
+                    });
+                }
+            });
+        }
+    });
+    
+    return allFiles;
+}
+
+// === ФУНКЦИЯ ОТКРЫТИЯ МОДАЛЬНОГО ОКНА ВСЕХ ФАЙЛОВ ===
+function openAllFilesModal() {
+    // Собираем все файлы
+    const allFiles = getAllFilesFromEmployees();
+    
+    // Сортировка: сначала новые, потом по алфавиту, потом по типу
+    allFiles.sort((a, b) => {
+        // 1. По дате (новые сверху)
+        if (b.sortDate !== a.sortDate) {
+            return b.sortDate - a.sortDate;
+        }
+        
+        // 2. По алфавиту имени сотрудника
+        const nameA = a.employeeUsername.toLowerCase();
+        const nameB = b.employeeUsername.toLowerCase();
+        if (nameA !== nameB) {
+            return nameA.localeCompare(nameB);
+        }
+        
+        // 3. По типу теста (Экзамен → Академия → Переаттестация → Разблокировки)
+        const typeOrder = {
+            'exam': 1,
+            'academy': 2,
+            'retraining': 3
+        };
+        const orderA = a.isUnlockFile ? 0 : (typeOrder[a.folderType] || 4);
+        const orderB = b.isUnlockFile ? 0 : (typeOrder[b.folderType] || 4);
+        
+        return orderA - orderB;
+    });
+    
+    // Создаем модальное окно
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.zIndex = '10002';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 1200px; max-height: 90vh; width: 90vw;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: var(--accent);">📁 Все файлы системы</h2>
+                <button class="btn small ghost" id="closeAllFilesModal">✖ Закрыть</button>
+            </div>
+            
+            <!-- Статистика -->
+            <div style="background: rgba(255,255,255,0.05); padding: 10px 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div>
+                        <strong>📊 Всего файлов:</strong> ${allFiles.length}
+                    </div>
+                    <div>
+                        <strong>👥 Сотрудников:</strong> ${new Set(allFiles.map(f => f.employeeUsername)).size}
+                    </div>
+                    <div>
+                        <strong>🎯 Оцененных:</strong> ${allFiles.filter(f => f.graded && !f.isUnlockFile).length}
+                    </div>
+                    <div>
+                        <strong>🔓 Разблокировок:</strong> ${allFiles.filter(f => f.isUnlockFile).length}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Фильтры и поиск -->
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" 
+                           id="allFilesSearch" 
+                           placeholder="Поиск по имени файла или сотрудника..." 
+                           style="flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white;">
+                    <button class="btn small" id="clearAllFilesSearch">🗑️ Очистить</button>
+                </div>
+                
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" class="file-type-filter" value="exam" checked> 🎓 Экзамен
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" class="file-type-filter" value="academy" checked> 📚 Академия
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" class="file-type-filter" value="retraining" checked> 🔄 Переаттестация
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" class="file-type-filter" value="unlock" checked> 🔓 Разблокировки
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" class="file-type-filter" value="graded"> ✅ Оцененные
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" class="file-type-filter" value="pending"> ⏳ Ожидающие оценки
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Список файлов -->
+            <div id="allFilesListContainer" style="overflow-y: auto; max-height: 55vh; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.2);">
+                <div id="allFilesList">
+                    <!-- Файлы будут загружены здесь -->
+                </div>
+                <div id="allFilesPagination" style="margin-top: 15px; text-align: center;"></div>
+            </div>
+            
+            <!-- Информация -->
+            <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 0.9em;">
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div>💡 <strong>Сортировка:</strong> Дата ↓ → Имя ↑ → Тип теста</div>
+                    <div>⚠️ <strong>Удаление:</strong> Файлы удаляются навсегда!</div>
+                    <div>📥 <strong>Скачивание:</strong> Сохраняет оригинальный формат</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Рендерим список файлов
+    renderAllFilesList(allFiles);
+    
+    // Обработчики событий
+    document.getElementById('closeAllFilesModal').addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    document.getElementById('clearAllFilesSearch').addEventListener('click', () => {
+        document.getElementById('allFilesSearch').value = '';
+        renderAllFilesList(allFiles);
+    });
+    
+    document.getElementById('allFilesSearch').addEventListener('input', (e) => {
+        renderAllFilesList(allFiles, e.target.value);
+    });
+    
+    // Обработчики фильтров
+    document.querySelectorAll('.file-type-filter').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            renderAllFilesList(allFiles);
+        });
+    });
+}
+
+// === ФУНКЦИЯ РЕНДЕРИНГА СПИСКА ФАЙЛОВ ===
+function renderAllFilesList(allFiles, searchTerm = '') {
+    const container = document.getElementById('allFilesList');
+    const paginationContainer = document.getElementById('allFilesPagination');
+    
+    if (!container) return;
+    
+    // Применяем поиск
+    let filteredFiles = [...allFiles];
+    
+    if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        filteredFiles = filteredFiles.filter(file => 
+            file.name.toLowerCase().includes(term) ||
+            file.employeeUsername.toLowerCase().includes(term) ||
+            file.employeePosition.toLowerCase().includes(term) ||
+            (file.content && file.content.toLowerCase().includes(term))
+        );
+    }
+    
+    // Применяем фильтры по типу
+    const activeFilters = Array.from(document.querySelectorAll('.file-type-filter:checked'))
+        .map(cb => cb.value);
+    
+    if (activeFilters.length > 0) {
+        filteredFiles = filteredFiles.filter(file => {
+            // Определяем тип файла
+            let fileType = '';
+            
+            if (file.isUnlockFile) {
+                fileType = 'unlock';
+            } else if (file.graded) {
+                fileType = 'graded';
+            } else if (!file.graded && !file.isUnlockFile) {
+                fileType = 'pending';
+            }
+            
+            // Проверяем соответствие фильтрам
+            const matchesType = activeFilters.includes(file.folderType) || 
+                               activeFilters.includes(fileType);
+            
+            return matchesType;
+        });
+    }
+    
+    // Пагинация
+    const itemsPerPage = 50;
+    const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
+    let currentPage = 1;
+    
+    function renderPage(page) {
+        currentPage = page;
+        const start = (page - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageFiles = filteredFiles.slice(start, end);
+        
+        if (pageFiles.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <div style="font-size: 48px; margin-bottom: 10px;">📭</div>
+                    <h3>Файлы не найдены</h3>
+                    <p>Попробуйте изменить поисковый запрос или фильтры</p>
+                </div>
+            `;
+            paginationContainer.innerHTML = '';
+            return;
+        }
+        
+        // Рендерим файлы
+        container.innerHTML = pageFiles.map((file, index) => {
+            const number = start + index + 1;
+            const isGraded = file.graded && !file.isUnlockFile;
+            const isPending = !file.graded && !file.isUnlockFile;
+            const isUnlock = file.isUnlockFile;
+            
+            // Определяем иконку и цвет
+            let icon = '📄';
+            let typeColor = 'var(--text-muted)';
+            let statusText = '';
+            
+            if (isUnlock) {
+                icon = '🔓';
+                typeColor = 'var(--warning)';
+                statusText = 'Разблокировка';
+            } else if (isGraded) {
+                icon = '✅';
+                typeColor = file.score >= 70 ? 'var(--success)' : 'var(--error)';
+                statusText = `Оценка: ${file.score}%`;
+            } else if (isPending) {
+                icon = '⏳';
+                typeColor = 'var(--warning)';
+                statusText = 'Ожидает оценки';
+            }
+            
+            // Форматируем дату
+            const date = file.date || 'Неизвестно';
+            
+            return `
+                <div class="all-file-item" style="margin-bottom: 10px; padding: 12px; border-radius: 6px; background: rgba(255,255,255,0.03); border-left: 4px solid ${typeColor};">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                                <span style="font-size: 1.2em;">${icon}</span>
+                                <strong style="color: ${typeColor};">${escapeHtml(file.name)}</strong>
+                                <span style="font-size: 0.8em; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 10px;">#${number}</span>
+                            </div>
+                            
+                            <div style="display: flex; gap: 15px; flex-wrap: wrap; font-size: 0.9em; color: var(--text-muted);">
+                                <div>
+                                    <strong>👤:</strong> ${escapeHtml(file.employeeUsername)}
+                                    <span style="color: var(--text-muted);">(${escapeHtml(file.employeePosition)})</span>
+                                </div>
+                                <div>
+                                    <strong>📅:</strong> ${date}
+                                </div>
+                                <div>
+                                    <strong>📝:</strong> ${escapeHtml(file.folderName)}
+                                </div>
+                                ${statusText ? `
+                                <div>
+                                    <strong>🎯:</strong> <span style="color: ${typeColor};">${statusText}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 5px; flex-shrink: 0;">
+                            <button class="btn small view-all-file-btn" 
+                                    data-file-id="${file.id}"
+                                    data-employee-id="${file.employeeId}"
+                                    data-folder-type="${file.folderType}"
+                                    title="Просмотр файла">
+                                👁️
+                            </button>
+                            <button class="btn small download-all-file-btn" 
+                                    data-file-content="${btoa(unescape(encodeURIComponent(file.content || '')))}"
+                                    data-file-name="${file.name}"
+                                    title="Скачать файл">
+                                📥
+                            </button>
+                            <button class="btn small ghost delete-all-file-btn" 
+                                    data-file-id="${file.id}"
+                                    data-employee-id="${file.employeeId}"
+                                    data-folder-type="${file.folderType}"
+                                    data-file-name="${file.name}"
+                                    title="Удалить файл">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Рендерим пагинацию
+        if (totalPages > 1) {
+            let paginationHTML = '<div style="display: flex; justify-content: center; gap: 5px; flex-wrap: wrap;">';
+            
+            // Кнопка "Назад"
+            if (currentPage > 1) {
+                paginationHTML += `<button class="btn small pagination-btn" data-page="${currentPage - 1}">← Назад</button>`;
+            }
+            
+            // Номера страниц
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === currentPage) {
+                    paginationHTML += `<button class="btn small active" style="background: var(--accent);">${i}</button>`;
+                } else {
+                    paginationHTML += `<button class="btn small pagination-btn" data-page="${i}">${i}</button>`;
+                }
+            }
+            
+            // Кнопка "Вперед"
+            if (currentPage < totalPages) {
+                paginationHTML += `<button class="btn small pagination-btn" data-page="${currentPage + 1}">Вперед →</button>`;
+            }
+            
+            paginationHTML += '</div>';
+            
+            paginationContainer.innerHTML = `
+                <div style="text-align: center; margin-top: 15px;">
+                    <div style="margin-bottom: 10px; color: var(--text-muted);">
+                        Страница ${currentPage} из ${totalPages} • Показано ${pageFiles.length} из ${filteredFiles.length} файлов
+                    </div>
+                    ${paginationHTML}
+                </div>
+            `;
+            
+            // Обработчики для кнопок пагинации
+            document.querySelectorAll('.pagination-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const page = parseInt(btn.dataset.page);
+                    renderPage(page);
+                });
+            });
+        } else {
+            paginationContainer.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); margin-top: 10px;">
+                    Показано ${filteredFiles.length} файлов
+                </div>
+            `;
+        }
+        
+        // Добавляем обработчики для кнопок файлов
+        addAllFilesEventListeners();
+    }
+    
+    // Начинаем с первой страницы
+    renderPage(1);
+}
+
+// === ФУНКЦИЯ ДЛЯ ОБРАБОТКИ СОБЫТИЙ ФАЙЛОВ ===
+function addAllFilesEventListeners() {
+    // Просмотр файла
+    document.querySelectorAll('.view-all-file-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const fileId = e.target.dataset.fileId;
+            const employeeId = e.target.dataset.employeeId;
+            const folderType = e.target.dataset.folderType;
+            
+            const employeesData = loadEmployeesData();
+            const employee = employeesData[employeeId];
+            
+            if (employee && employee.files[folderType]) {
+                const file = employee.files[folderType].find(f => f.id === fileId);
+                if (file) {
+                    openFileViewer(file);
+                } else {
+                    showError('Файл не найден!');
+                }
+            }
+        });
+    });
+    
+    // Скачивание файла
+    document.querySelectorAll('.download-all-file-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const fileContent = e.target.dataset.fileContent;
+            const fileName = e.target.dataset.fileName;
+            
+            try {
+                const content = decodeURIComponent(escape(atob(fileContent)));
+                const blob = new Blob([content], { 
+                    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                });
+                saveAs(blob, fileName);
+                showMessage('Файл скачан', 'success');
+            } catch (error) {
+                console.error('Ошибка при скачивании:', error);
+                showError('Ошибка при скачивании файла');
+            }
+        });
+    });
+    
+    // Удаление файла
+    document.querySelectorAll('.delete-all-file-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const fileId = e.target.dataset.fileId;
+            const employeeId = e.target.dataset.employeeId;
+            const folderType = e.target.dataset.folderType;
+            const fileName = e.target.dataset.fileName;
+            
+            if (confirm(`Вы уверены, что хотите удалить файл?\n\n"${fileName}"\n\nЭто действие невозможно отменить!`)) {
+                const success = deleteAllFilesFile(employeeId, folderType, fileId);
+                
+                if (success) {
+                    showMessage('Файл удален', 'success');
+                    // Перезагружаем список файлов
+                    const allFiles = getAllFilesFromEmployees();
+                    const searchTerm = document.getElementById('allFilesSearch')?.value || '';
+                    renderAllFilesList(allFiles, searchTerm);
+                } else {
+                    showError('Ошибка при удалении файла');
+                }
+            }
+        });
+    });
+}
+
+// === ФУНКЦИЯ УДАЛЕНИЯ ФАЙЛА ===
+function deleteAllFilesFile(employeeId, folderType, fileId) {
+    try {
+        const employeesData = loadEmployeesData();
+        const employee = employeesData[employeeId];
+        
+        if (!employee || !employee.files[folderType]) {
+            return false;
+        }
+        
+        // Удаляем файл из массива
+        const initialLength = employee.files[folderType].length;
+        employee.files[folderType] = employee.files[folderType].filter(file => file.id !== fileId);
+        
+        if (employee.files[folderType].length === initialLength) {
+            return false; // Файл не был найден
+        }
+        
+        saveEmployeesData(employeesData);
+        return true;
+    } catch (error) {
+        console.error('Ошибка при удалении файла:', error);
+        return false;
+    }
+}
+
 function renderAdmin() {
     const area = document.getElementById("adminArea");
     const employeesData = loadEmployeesData();
@@ -3384,6 +3978,13 @@ function renderAdmin() {
                     
                     <!-- ФИКСИРОВАННАЯ СЕТКА СОТРУДНИКОВ -->
                     ${renderFixedEmployees(employeesData)}
+                    
+                    <!-- БЛОК "ВСЕ ФАЙЛЫ СИСТЕМЫ" -->
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <h3 style="margin-top: 0; color: var(--accent);">📁 Все файлы системы</h3>
+                        <p class="small" style="margin-bottom: 15px;">Просмотр и управление всеми файлами тестов и разблокировок</p>
+                        <button class="btn" id="showAllFilesBtn" style="width: 100%;">📂 Открыть архив файлов</button>
+                    </div>
                     
                     <div style="margin-top: 15px; font-size: 0.9em; color: var(--text-muted);">
                         💡 Фиксированные сотрудники не могут быть изменены. Редактирование доступно только для вакантных мест.
@@ -3557,6 +4158,9 @@ function renderAdmin() {
         });
     }
     
+    // Обработчик для кнопки "Все файлы"
+    document.getElementById('showAllFilesBtn')?.addEventListener('click', openAllFilesModal);
+    
     // Добавляем обработчики для переключения вкладок рейтинга
     const rankingTabs = document.querySelectorAll('.ranking-tabs .btn');
     rankingTabs.forEach(tab => {
@@ -3609,4 +4213,3 @@ function switchRankingTab(type) {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
-
