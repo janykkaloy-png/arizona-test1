@@ -21,7 +21,7 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Maximiliano_Alwarez' },
     { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: ' Itachi_Continuum' },
     { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Ara_Armatura' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Sasha_Mliov' }
 ];
 
 const examQuestions = [
@@ -4213,3 +4213,4 @@ function switchRankingTab(type) {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);
+
