@@ -14,13 +14,13 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Chaffy_Washington' },
     { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Denis_Thompson' },
     { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Shimura_Nagasama' },
-    { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Ara_Armatura' },
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Akashi_Miyazuki' },
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Matwey_Valhalla' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Maximiliano_Alwarez' },
     { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: ' Itachi_Continuum' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Ara_Armatura' },
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
     { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Sasha_Mliov' }
 ];
 
@@ -4607,3 +4607,4 @@ function switchRankingTab(type) {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);  
+
