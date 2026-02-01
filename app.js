@@ -403,6 +403,7 @@ Arizona RP | Военная Полиция
         const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
         if (!gradedFile.isUnlockFile) {
             statistics.push({
+                id: Date.now().toString(), // Добавляем ID для удаления
                 username: username,
                 testType: testType,
                 score: gradedFile.score,
@@ -556,7 +557,7 @@ function loadEmployeesData() {
         // 🔄 ПРОВЕРКА И ОЧИСТКА КУРСАНТСКИХ ПАПОК
         console.log('🧹 Проверка и очистка курсантских папок...');
         Object.values(employeesData).forEach(emp => {
-            // Если это позиция курсанта (cadet_1, cadet_2, cadet_3)
+            // Если это позиция курсанта (cadet_1, cadet_2, cadet_3) и вакантно
             if (emp.id.includes('cadet') && emp.username === 'Вакантно') {
                 // Проверяем, нет ли файлов у вакантного курсанта
                 const totalFiles = (emp.files.academy?.length || 0) + 
@@ -2326,7 +2327,8 @@ function playSound(type) {
         }
     }
 }
-// --- ФУНКЦИИ ДЛЯ АДМИН-ПАНЕЛИ ---
+
+// === ФУНКЦИИ ДЛЯ СТАТИСТИКИ ===
 
 function calculateStats() {
     const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
@@ -2340,11 +2342,6 @@ function calculateStats() {
     if (validResults.length === 0) {
         return getEmptyStats();
     }
-    
-    // Анимируем появление статистики
-    setTimeout(() => {
-        animateStatistics();
-    }, 300);
     
     const uniqueResults = [];
     const seen = new Set();
@@ -2385,9 +2382,9 @@ function calculateStats() {
     const academyCount = academyResults.length;
     const retrainingCount = retrainingResults.length;
     
-    const examRanking = createAnimatedRanking(examResults, 'Экзамен');
-    const academyRanking = createAnimatedRanking(academyResults, 'Академия');
-    const retrainingRanking = createAnimatedRanking(retrainingResults, 'Переаттестация');
+    const examRanking = createSimpleRanking(examResults, 'Экзамен');
+    const academyRanking = createSimpleRanking(academyResults, 'Академия');
+    const retrainingRanking = createSimpleRanking(retrainingResults, 'Переаттестация');
     
     const gradeDistribution = {
         excellent: uniqueResults.filter(f => f.score >= 90).length,
@@ -2405,7 +2402,8 @@ function calculateStats() {
             passed: f.passed,
             date: new Date(f.date).toLocaleString('ru-RU'),
             type: getTestTypeName(f.testType),
-            time: formatTime(f.timeSpent || 15)
+            time: formatTime(f.timeSpent || 15),
+            id: f.id
         }));
     
     // Рассчитываем тренды
@@ -2443,62 +2441,16 @@ function calculateStats() {
         examPassRate: examResults.length > 0 ? Math.round((examResults.filter(f => f.passed).length / examResults.length) * 100) : 0,
         academyPassRate: academyResults.length > 0 ? Math.round((academyResults.filter(f => f.passed).length / academyResults.length) * 100) : 0,
         retrainingPassRate: retrainingResults.length > 0 ? Math.round((retrainingResults.filter(f => f.passed).length / retrainingResults.length) * 100) : 0,
-        lastUpdated: new Date().toLocaleString('ru-RU')
+        lastUpdated: new Date().toLocaleString('ru-RU'),
+        allResults: uniqueResults.map(r => ({
+            ...r,
+            timeFormatted: formatTime(r.timeSpent || 15),
+            testTypeName: getTestTypeName(r.testType)
+        }))
     };
 }
 
-function animateStatistics() {
-    // Анимация счетчиков
-    const counters = document.querySelectorAll('.stat-number');
-    counters.forEach(counter => {
-        const finalValue = parseInt(counter.textContent);
-        const duration = 1500;
-        const startTime = Date.now();
-        
-        const animate = () => {
-            const currentTime = Date.now();
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const easeProgress = 1 - Math.pow(1 - progress, 3); // Кубическое замедление
-            
-            const currentValue = Math.floor(easeProgress * finalValue);
-            counter.textContent = currentValue;
-            
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            } else {
-                counter.textContent = finalValue;
-            }
-        };
-        
-        animate();
-    });
-    
-    // Анимация прогресс-баров
-    const progressBars = document.querySelectorAll('.progress-bar');
-    progressBars.forEach(bar => {
-        const width = bar.style.width;
-        bar.style.width = '0%';
-        setTimeout(() => {
-            bar.style.width = width;
-            bar.style.setProperty('--progress-width', width);
-        }, 300);
-    });
-    
-    // Анимация появления карточек
-    const cards = document.querySelectorAll('.stat-card, .ranking-item');
-    cards.forEach((card, index) => {
-        card.style.animationDelay = `${index * 0.1}s`;
-    });
-    
-    // Анимация круговой диаграммы
-    const pieChart = document.querySelector('.pie-chart');
-    if (pieChart) {
-        pieChart.style.animation = 'rotate 20s linear infinite';
-    }
-}
-
-function createAnimatedRanking(results, type) {
+function createSimpleRanking(results, type) {
     if (results.length === 0) return [];
     
     return results
@@ -2510,7 +2462,8 @@ function createAnimatedRanking(results, type) {
             time: `${result.timeSpent || 15} мин`,
             correctAnswers: result.correctAnswers || 0,
             totalAnswers: result.totalAnswers || 15,
-            initials: getInitials(result.username)
+            initials: getInitials(result.username),
+            id: result.id
         }))
         .sort((a, b) => b.score - a.score)
         .map((result, index) => ({
@@ -2548,7 +2501,8 @@ function getEmptyStats() {
         examPassRate: 0,
         academyPassRate: 0,
         retrainingPassRate: 0,
-        lastUpdated: new Date().toLocaleString('ru-RU')
+        lastUpdated: new Date().toLocaleString('ru-RU'),
+        allResults: []
     };
 }
 
@@ -2606,11 +2560,23 @@ function renderRecentResults(results) {
         <div class="timeline-item" style="animation-delay: ${index * 0.1}s">
             <div class="timeline-date">${result.date}</div>
             <div class="timeline-content">
-                <strong>${result.name}</strong> - ${result.type}
-                <div class="trend-indicator ${result.score >= 70 ? 'up' : 'down'}">
-                    <span class="trend-arrow">${result.score >= 70 ? '↗' : '↘'}</span>
-                    <span>${result.score}%</span>
-                    <span>(${result.time})</span>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <strong>${result.name}</strong> - ${result.type}
+                        <div class="trend-indicator ${result.score >= 70 ? 'up' : 'down'}">
+                            <span class="trend-arrow">${result.score >= 70 ? '↗' : '↘'}</span>
+                            <span>${result.score}%</span>
+                            <span>(${result.time})</span>
+                        </div>
+                    </div>
+                    ${result.id ? `
+                        <button class="btn small ghost delete-recent-test" 
+                                style="padding: 2px 8px; font-size: 0.8em;"
+                                onclick="event.stopPropagation(); deleteSpecificTest('${result.id}', '${result.name}', '${result.type.toLowerCase()}')"
+                                title="Удалить этот тест">
+                            🗑️
+                        </button>
+                    ` : ''}
                 </div>
             </div>
         </div>
@@ -2690,7 +2656,7 @@ function renderStatsProgress(stats) {
                     <span>${stats.examPassRate}%</span>
                 </div>
                 <div class="progress-container">
-                    <div class="progress-bar" style="width: ${stats.examPassRate}%; background: var(--accent)">
+                    <div class="progress-bar" style="width: ${stats.examPassRate}%; background: var(--accent)}">
                         <span class="progress-percent">${stats.examPassRate}%</span>
                     </div>
                 </div>
@@ -3944,6 +3910,433 @@ function deleteAllFilesFile(employeeId, folderType, fileId) {
     }
 }
 
+// === ФУНКЦИИ ДЛЯ УДАЛЕНИЯ ТЕСТОВ ИЗ СТАТИСТИКИ ===
+
+// Функция для удаления конкретного теста
+function deleteSpecificTest(testId, username, testType) {
+    if (!confirm(`Удалить тест сотрудника "${username}" (${getTestTypeName(testType)})?\n\nЭто действие нельзя отменить!`)) {
+        return false;
+    }
+    
+    // Удаляем из статистики
+    const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
+    const initialLength = statistics.length;
+    
+    const updatedStatistics = statistics.filter(test => {
+        // Если указан конкретный ID, удаляем по ID
+        if (testId) {
+            return test.id !== testId;
+        }
+        // Иначе удаляем по имени и типу
+        return !(test.username === username && test.testType === testType);
+    });
+    
+    if (updatedStatistics.length === initialLength) {
+        showError('Тест не найден!');
+        return false;
+    }
+    
+    localStorage.setItem('testStatistics', JSON.stringify(updatedStatistics));
+    
+    // Также удаляем из pendingTestResults, если есть
+    const pendingResults = JSON.parse(localStorage.getItem('pendingTestResults') || '[]');
+    const updatedPending = pendingResults.filter(test => {
+        if (testId) {
+            return test.id !== testId;
+        }
+        return !(test.username === username && test.testType === testType);
+    });
+    
+    if (updatedPending.length !== pendingResults.length) {
+        localStorage.setItem('pendingTestResults', JSON.stringify(updatedPending));
+    }
+    
+    // Удаляем из adminFiles, если файл был загружен
+    const adminFiles = JSON.parse(localStorage.getItem('adminFiles') || '[]');
+    const updatedAdminFiles = adminFiles.filter(file => {
+        const fileUsername = file.username || extractUsernameFromFilename(file.name);
+        const fileTestType = file.testType || extractTestTypeFromFilename(file.name);
+        
+        if (testId && file.gradingData && file.gradingData.id === testId) {
+            return false;
+        }
+        
+        return !(fileUsername === username && fileTestType === testType);
+    });
+    
+    if (updatedAdminFiles.length !== adminFiles.length) {
+        localStorage.setItem('adminFiles', JSON.stringify(updatedAdminFiles));
+    }
+    
+    showMessage(`Тест сотрудника "${username}" удален из статистики`, 'success');
+    
+    // Обновляем отображение
+    renderAdmin();
+    return true;
+}
+
+// Функция для удаления всех тестов определенного типа
+function deleteAllTestsByType(testType) {
+    if (!confirm(`Удалить ВСЕ тесты типа "${getTestTypeName(testType)}"?\n\nЭто действие нельзя отменить!`)) {
+        return false;
+    }
+    
+    // Удаляем из статистики
+    const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
+    const initialLength = statistics.length;
+    
+    const updatedStatistics = statistics.filter(test => test.testType !== testType);
+    
+    if (updatedStatistics.length === initialLength) {
+        showError(`Не найдено тестов типа "${getTestTypeName(testType)}"`);
+        return false;
+    }
+    
+    localStorage.setItem('testStatistics', JSON.stringify(updatedStatistics));
+    
+    // Удаляем из pendingTestResults
+    const pendingResults = JSON.parse(localStorage.getItem('pendingTestResults') || '[]');
+    const updatedPending = pendingResults.filter(test => test.testType !== testType);
+    
+    if (updatedPending.length !== pendingResults.length) {
+        localStorage.setItem('pendingTestResults', JSON.stringify(updatedPending));
+    }
+    
+    showMessage(`Все тесты типа "${getTestTypeName(testType)}" удалены`, 'success');
+    
+    // Обновляем отображение
+    renderAdmin();
+    return true;
+}
+
+// Функция для удаления всех тестов сотрудника
+function deleteAllTestsByEmployee(username) {
+    if (!confirm(`Удалить ВСЕ тесты сотрудника "${username}"?\n\nЭто действие нельзя отменить!`)) {
+        return false;
+    }
+    
+    // Удаляем из статистики
+    const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
+    const initialLength = statistics.length;
+    
+    const updatedStatistics = statistics.filter(test => test.username !== username);
+    
+    if (updatedStatistics.length === initialLength) {
+        showError(`Не найдено тестов сотрудника "${username}"`);
+        return false;
+    }
+    
+    localStorage.setItem('testStatistics', JSON.stringify(updatedStatistics));
+    
+    // Удаляем из pendingTestResults
+    const pendingResults = JSON.parse(localStorage.getItem('pendingTestResults') || '[]');
+    const updatedPending = pendingResults.filter(test => test.username !== username);
+    
+    if (updatedPending.length !== pendingResults.length) {
+        localStorage.setItem('pendingTestResults', JSON.stringify(updatedPending));
+    }
+    
+    showMessage(`Все тесты сотрудника "${username}" удалены`, 'success');
+    
+    // Обновляем отображение
+    renderAdmin();
+    return true;
+}
+
+// Функция для открытия модального окна управления тестами
+function openTestManagementModal() {
+    const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
+    const gradedTests = statistics.filter(test => test.graded === true);
+    
+    if (gradedTests.length === 0) {
+        showMessage('Нет оцененных тестов для управления', 'info');
+        return;
+    }
+    
+    // Группируем тесты по сотрудникам
+    const testsByEmployee = {};
+    gradedTests.forEach(test => {
+        if (!testsByEmployee[test.username]) {
+            testsByEmployee[test.username] = [];
+        }
+        testsByEmployee[test.username].push(test);
+    });
+    
+    // Сортируем сотрудников по имени
+    const sortedEmployees = Object.keys(testsByEmployee).sort();
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.zIndex = '10003';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 1000px; max-height: 90vh; width: 90vw;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: var(--accent);">🗑️ Управление тестами</h2>
+                <button class="btn small ghost" id="closeTestManagementModal">✖ Закрыть</button>
+            </div>
+            
+            <!-- Кнопки массовых действий -->
+            <div style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                <h4 style="margin-top: 0;">⚡ Быстрые действия</h4>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn small danger" onclick="deleteAllTestsByType('all')">
+                        🗑️ Удалить все тесты
+                    </button>
+                    <button class="btn small warning" onclick="deleteAllTestsByType('exam')">
+                        🎓 Удалить все экзамены
+                    </button>
+                    <button class="btn small warning" onclick="deleteAllTestsByType('academy')">
+                        📚 Удалить всю академию
+                    </button>
+                    <button class="btn small warning" onclick="deleteAllTestsByType('retraining')">
+                        🔄 Удалить все переатт.
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Поиск и фильтры -->
+            <div style="margin-bottom: 20px;">
+                <input type="text" 
+                       id="testSearchInput" 
+                       placeholder="Поиск по сотруднику..." 
+                       style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white;"
+                       onkeyup="filterTestList()">
+            </div>
+            
+            <!-- Список тестов -->
+            <div id="testListContainer" style="overflow-y: auto; max-height: 60vh; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.2);">
+                ${sortedEmployees.map(username => {
+                    const tests = testsByEmployee[username];
+                    const examTests = tests.filter(t => t.testType === 'exam');
+                    const academyTests = tests.filter(t => t.testType === 'academy');
+                    const retrainingTests = tests.filter(t => t.testType === 'retraining');
+                    
+                    return `
+                        <div class="test-employee-section" data-username="${username}">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px;">
+                                <div>
+                                    <strong style="font-size: 1.1em;">👤 ${escapeHtml(username)}</strong>
+                                    <span style="margin-left: 10px; font-size: 0.9em; color: var(--text-muted);">
+                                        Всего: ${tests.length} тестов
+                                    </span>
+                                </div>
+                                <button class="btn small danger" onclick="deleteAllTestsByEmployee('${username}')">
+                                    🗑️ Удалить все
+                                </button>
+                            </div>
+                            
+                            ${examTests.length > 0 ? `
+                                <div class="test-type-section">
+                                    <div class="test-type-header">
+                                        <span>🎓 Экзамены</span>
+                                        <span>${examTests.length} тестов</span>
+                                    </div>
+                                    ${renderTestListItems(examTests)}
+                                </div>
+                            ` : ''}
+                            
+                            ${academyTests.length > 0 ? `
+                                <div class="test-type-section">
+                                    <div class="test-type-header">
+                                        <span>📚 Академия</span>
+                                        <span>${academyTests.length} тестов</span>
+                                    </div>
+                                    ${renderTestListItems(academyTests)}
+                                </div>
+                            ` : ''}
+                            
+                            ${retrainingTests.length > 0 ? `
+                                <div class="test-type-section">
+                                    <div class="test-type-header">
+                                        <span>🔄 Переаттестация</span>
+                                        <span>${retrainingTests.length} тестов</span>
+                                    </div>
+                                    ${renderTestListItems(retrainingTests)}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('')}
+                
+                ${gradedTests.length === 0 ? `
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        <div style="font-size: 48px; margin-bottom: 10px;">📭</div>
+                        <h3>Нет оцененных тестов</h3>
+                        <p>Все тесты ожидают оценки администратора</p>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 0.9em;">
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div>⚠️ <strong>Внимание:</strong> Удаление тестов нельзя отменить!</div>
+                    <div>📊 <strong>Статистика:</strong> ${gradedTests.length} оцененных тестов</div>
+                    <div>👥 <strong>Сотрудники:</strong> ${sortedEmployees.length} чел.</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Обработчики событий
+    document.getElementById('closeTestManagementModal').addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    // Добавляем стили
+    if (!document.querySelector('#testManagementStyles')) {
+        const styles = document.createElement('style');
+        styles.id = 'testManagementStyles';
+        styles.textContent = `
+            .test-employee-section {
+                margin-bottom: 20px;
+                border: 1px solid rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 15px;
+                background: rgba(0,0,0,0.1);
+            }
+            
+            .test-type-section {
+                margin: 15px 0;
+                padding: 10px;
+                background: rgba(255,255,255,0.02);
+                border-radius: 6px;
+            }
+            
+            .test-type-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+                padding-bottom: 5px;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+                font-weight: bold;
+                color: var(--accent);
+            }
+            
+            .test-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 12px;
+                margin: 5px 0;
+                background: rgba(255,255,255,0.03);
+                border-radius: 4px;
+                border-left: 3px solid var(--success);
+            }
+            
+            .test-item.failed {
+                border-left-color: var(--error);
+            }
+            
+            .test-item .test-info {
+                flex: 1;
+            }
+            
+            .test-item .test-score {
+                font-weight: bold;
+                margin: 0 10px;
+                min-width: 50px;
+                text-align: center;
+            }
+            
+            .test-item .test-score.passed {
+                color: var(--success);
+            }
+            
+            .test-item .test-score.failed {
+                color: var(--error);
+            }
+            
+            .btn.danger {
+                background: var(--error);
+                color: white;
+            }
+            
+            .btn.warning {
+                background: var(--warning);
+                color: black;
+            }
+            
+            .btn.small {
+                padding: 5px 10px;
+                font-size: 0.85em;
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+}
+
+// Функция для рендеринга списка тестов
+function renderTestListItems(tests) {
+    // Сортируем по дате (новые сверху)
+    tests.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    return tests.map(test => {
+        const date = new Date(test.date).toLocaleString('ru-RU');
+        const passedClass = test.passed ? 'passed' : 'failed';
+        const itemClass = test.passed ? '' : 'failed';
+        
+        return `
+            <div class="test-item ${itemClass}">
+                <div class="test-info">
+                    <div>${date}</div>
+                    <div style="font-size: 0.9em; color: var(--text-muted);">
+                        ${test.timeSpent || 15} мин • ${test.correctAnswers || 0}/${test.totalAnswers || 15}
+                    </div>
+                </div>
+                <div class="test-score ${passedClass}">
+                    ${test.score}%
+                </div>
+                <button class="btn small danger" 
+                        onclick="deleteSpecificTest('${test.id}', '${test.username}', '${test.testType}')"
+                        title="Удалить этот тест">
+                    🗑️
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+// Функция фильтрации списка тестов
+function filterTestList() {
+    const searchInput = document.getElementById('testSearchInput');
+    if (!searchInput) return;
+    
+    const searchTerm = searchInput.value.toLowerCase();
+    const sections = document.querySelectorAll('.test-employee-section');
+    
+    sections.forEach(section => {
+        const username = section.dataset.username.toLowerCase();
+        
+        if (username.includes(searchTerm) || searchTerm === '') {
+            section.style.display = 'block';
+        } else {
+            section.style.display = 'none';
+        }
+    });
+}
+
+// Функция удаления ВСЕХ тестов
+function deleteAllTests() {
+    if (!confirm('ВНИМАНИЕ! Удалить ВСЕ тесты из статистики?\n\nЭто действие нельзя отменить!')) {
+        return;
+    }
+    
+    localStorage.setItem('testStatistics', JSON.stringify([]));
+    localStorage.setItem('pendingTestResults', JSON.stringify([]));
+    
+    showMessage('Все тесты удалены', 'success');
+    
+    // Закрываем модалку и обновляем статистику
+    const modal = document.querySelector('.modal-overlay[style*="z-index: 10003"]');
+    if (modal) modal.remove();
+    
+    renderAdmin();
+}
+
 function renderAdmin() {
     const area = document.getElementById("adminArea");
     const employeesData = loadEmployeesData();
@@ -3997,6 +4390,7 @@ function renderAdmin() {
                         <h2 style="color: var(--accent); margin: 0;">📊 Админ-панель</h2>
                         <div style="display: flex; gap: 10px;">
                             <button class="btn small" onclick="exportStatistics()">📈 Экспорт статистики</button>
+                            <button class="btn small" onclick="openTestManagementModal()">🗑️ Управление тестами</button>
                             <button class="btn small ghost" onclick="logoutAdmin()">🚪 Выйти</button>
                         </div>
                     </div>
@@ -4005,18 +4399,18 @@ function renderAdmin() {
                     <div class="stats-container">
                         <h3>📈 Статистика тестирования</h3>
                         
-                        <!-- Ключевые метрики с анимацией -->
+                        <!-- Ключевые метрики -->
                         <div class="stats-grid">
                             <div class="stat-card">
                                 <div class="stat-icon">📊</div>
-                                <div class="stat-number animated">${stats.totalTests}</div>
+                                <div class="stat-number">${stats.totalTests}</div>
                                 <div class="stat-label">Всего тестов</div>
                                 <div class="stat-trend">Обновлено сегодня</div>
                             </div>
                             
                             <div class="stat-card">
                                 <div class="stat-icon">🎯</div>
-                                <div class="stat-number animated">${stats.averageScore}%</div>
+                                <div class="stat-number">${stats.averageScore}%</div>
                                 <div class="stat-label">Средний балл</div>
                                 <div class="stat-trend ${stats.passRateTrend === 'up' ? 'trend-up' : 'trend-down'}">
                                     ${stats.passRateTrend === 'up' ? '↗ Рост' : '↘ Снижение'}
@@ -4025,14 +4419,14 @@ function renderAdmin() {
                             
                             <div class="stat-card">
                                 <div class="stat-icon">✅</div>
-                                <div class="stat-number animated">${stats.passRate}%</div>
+                                <div class="stat-number">${stats.passRate}%</div>
                                 <div class="stat-label">Проходимость</div>
                                 <div class="small">${stats.totalTests > 0 ? stats.passRate + '% успешно' : 'Нет данных'}</div>
                             </div>
                             
                             <div class="stat-card">
                                 <div class="stat-icon">⏱️</div>
-                                <div class="stat-number animated">${stats.averageTime.split(':')[0]}</div>
+                                <div class="stat-number">${stats.averageTime.split(':')[0]}</div>
                                 <div class="stat-label">Среднее время</div>
                                 <div class="small">${stats.averageTime}</div>
                             </div>
@@ -4212,5 +4606,4 @@ function switchRankingTab(type) {
 }
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
-document.addEventListener('DOMContentLoaded', initUI);
-
+document.addEventListener('DOMContentLoaded', initUI);  
