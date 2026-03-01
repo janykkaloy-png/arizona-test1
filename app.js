@@ -19,9 +19,9 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Maximiliano_Alwarez' },
-    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Alexander_Alvares' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
+    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Samur_Ito' },
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Gustavo_Mendez' },
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Enrico_Coffeeна' }
 ];
 
 const examQuestions = [
@@ -4619,6 +4619,7 @@ function switchRankingTab(type) {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);  
+
 
 
 
