@@ -12,16 +12,16 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Jan_Abobbi' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
     { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Chaffy_Washington' },
-    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Mike_Alwarez' },
+    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
-    { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Gustavo_Mendez' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Maximiliano_Alwarez' },
-    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Samur_Ito' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Gustavo_Mendez' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Enrico_Coffeeна' }
+    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Enrico_Coffee' },
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
 const examQuestions = [
@@ -4619,6 +4619,7 @@ function switchRankingTab(type) {
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 document.addEventListener('DOMContentLoaded', initUI);  
+
 
 
 
