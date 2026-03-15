@@ -16,11 +16,11 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
-    { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Ralph_Balenciaga' },
     { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Gustavo_Mendez' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Maximiliano_Alwarez' },
-    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Enrico_Coffee' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Ralph_Balenciaga' },
+    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
     { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
