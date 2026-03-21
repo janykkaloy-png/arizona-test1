@@ -21,7 +21,7 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
     { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Tendo_Izumi' },
     { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Rin_Valhalla' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Ralph_Laurence' }
 ];
 
 const examQuestions = [
