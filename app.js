@@ -24,71 +24,205 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
+//==========================================================================================================================================
+//==========================================================================================================================================
+//==========================================================================================================================================
+
 const examQuestions = [
-    { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
-    { text: "Как должны разговаривать сотрудники военной полиции?" },
-    { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?(Не с разрешения и не в обед)" },
-    { text: "Что должны иметь при себе сотрудники военной полиции при проверке ВЧ на ЧС?" },
-    { text: "Что должен делать сотрудник ВП при проверке ВЧ на ЧС, помимо самой проверки?" },
-    { text: "Что запрещается сотрудникам ВП при выполнении спец.задачи?" },
-    { text: "При каком приказе сотрудник ВП обязан снять маску?" },
-    { text: "Какими цветами должен быть покрашен автомобиль сотрудника ВП?" },
-    { text: "Какая приписка в рации департамента?" },
-    { text: "Сколько минимум минут нужно проверять ВЧ на ЧС?" },
-    { text: "Кому подчиняются сотрудники ВП?" },
-    { text: "Последовательность действий офицера ВП при виде нарушителя?" },
-    { text: "Какие места помимо Военных Частей нужно проверять?" },
-    { text: "Назовите недельную норму проверок состава МО от ВП." },
-    { text: "Какие последствия ждут организацию получившая неудовлетворительную оценку при проверке состава?" },
+    { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?", type: "text",
+        type: "multiple",
+        options: [
+            "Устав МО, Устав ВП",
+            "Устав МЮ",
+            "Федеральное постановление, уголовный кодекс, административный кодекс",
+            "Всё выше перечисленное"
+        ],
+        correctAnswers: ["Устав МО, Устав ВП", "Федеральное постановление, уголовный кодекс, административный кодекс"],
+        maxSelections: 2
+    },
+    { text: "Как должны разговаривать сотрудники военной полиции?", type: "text" },
+    { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?(Не с разрешения и не в обед)", type: "text" },
+    { text: "Что должны иметь при себе сотрудники военной полиции при проверке ВЧ на ЧС?", type: "text" },
+    { text: "Что должен делать сотрудник ВП при проверке ВЧ на ЧС, помимо самой проверки?", type: "text" },
+    { text: "Что запрещается сотрудникам ВП при выполнении спец.задачи?", type: "text" },
+    { text: "При каком приказе сотрудник ВП обязан снять маску?",
+        type: "multiple",
+        options: [
+            "Приказ Министра Обороны",
+            "Приказ Куратора Дельты",
+            "Приказ Сотрудника Пра-во",
+            "Приказ Руководста армии"
+        ],
+        correctAnswers: ["Приказ Министра Обороны", "Приказ Руководста армии"],
+        maxSelections: 2
+    },
+    { text: "Какими цветами должен быть покрашен автомобиль сотрудника ВП?", type: "text" },
+    { text: "Какая приписка в рации департамента?", type: "text" },
+    { text: "Сколько минимум минут нужно проверять ВЧ на ЧС?", type: "text",
+        type: "multiple",
+        options: [
+            "4 минуты",
+            "5 минут",
+            "3 минуты",
+            "Минимального лимита нет"
+        ],
+        correctAnswers: ["3 минуты"],
+        maxSelections: 1
+    },
+    { text: "Кому подчиняются сотрудники ВП?", type: "text" },
+    { text: "Последовательность действий офицера ВП при виде нарушителя?", type: "text" },
+    { text: "Какие места помимо Военных Частей нужно проверять?", type: "text" },
+    { text: "Назовите недельную норму проверок состава МО от ВП.", type: "text",
+        type: "multiple",
+        options: [
+            "7 раз в неделю",
+            "3 раза в неделю",
+            "5 раз в неделю",
+            "4 раза в неделю"
+        ],
+        correctAnswers: ["3 раза в неделю"],
+        maxSelections: 1
+    },
+    { text: "Какие последствия ждут организацию получившая неудовлетворительную оценку при проверке состава?", type: "text" },
+];
+//==========================================================================================================================================
+//==========================================================================================================================================
+//==========================================================================================================================================
+const retrainingQuestions = [
+    { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?", type: "text",
+        type: "multiple",
+        options: [
+            "Устав МО, Устав ВП",
+            "Устав МЮ",
+            "Федеральное постановление, уголовный кодекс, административный кодекс",
+            "Всё выше перечисленное"
+        ],
+        correctAnswers: ["Устав МО, Устав ВП", "Федеральное постановление, уголовный кодекс, административный кодекс"],
+        maxSelections: 2
+    },
+    { text: "Как должны разговаривать сотрудники военной полиции?", type: "text" },
+    { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?(Не с разрешения и не в обед)", type: "text" },
+    { text: "Что должны иметь при себе сотрудники военной полиции при проверке ВЧ на ЧС?", type: "text" },
+    { text: "Что должен делать сотрудник ВП при проверке ВЧ на ЧС, помимо самой проверки?", type: "text" },
+    { text: "Что запрещается сотрудникам ВП при выполнении спец.задачи?", type: "text" },
+    { text: "При каком приказе сотрудник ВП обязан снять маску?",
+        type: "multiple",
+        options: [
+            "Приказ Министра Обороны",
+            "Приказ Куратора Дельты",
+            "Приказ Сотрудника Пра-во",
+            "Приказ Руководста армии"
+        ],
+        correctAnswers: ["Приказ Министра Обороны", "Приказ Руководста армии"],
+        maxSelections: 2
+    },
+    { text: "Какими цветами должен быть покрашен автомобиль сотрудника ВП?", type: "text" },
+    { text: "Какая приписка в рации департамента?", type: "text" },
+        { text: "Сколько минимум минут нужно проверять ВЧ на ЧС?", type: "text",
+        type: "multiple",
+        options: [
+            "4 минуты",
+            "5 минут",
+            "3 минуты",
+            "Минимального лимита нет"
+        ],
+        correctAnswers: ["3 минуты"],
+        maxSelections: 1
+    },
+    { text: "Кому подчиняются сотрудники ВП?", type: "text" },
+    { text: "Последовательность действий офицера ВП при виде нарушителя?", type: "text" },
+    { text: "Какие места помимо Военных Частей нужно проверять?", type: "text" },
+    { text: "Назовите недельную норму проверок состава МО от ВП.", type: "text",
+        type: "multiple",
+        options: [
+            "7 раз в неделю",
+            "3 раза в неделю",
+            "5 раз в неделю",
+            "4 раза в неделю"
+        ],
+        correctAnswers: ["3 раза в неделю"],
+        maxSelections: 1
+    },
+    { text: "Какие последствия ждут организацию получившая неудовлетворительную оценку при проверке состава?", type: "text" },
+    { text: "В какое время запрещается делать проверку состава МО от ВП?", type: "text" },
+    { text: "Назовите все критерии требующиеся для внесения личного транспортного средства в реестр.", type: "text" },
+    { text: "Какие грузовые транспортные средства можно регистрировать в реестре?", type: "text" },
+    { text: "Представим ситуацию, вы хотите заехать в СФа, стоите на КПП и видите как воруют маты в грузовом отсеке. Ваши действия?", type: "text" },
+    { text: "Представим ситуацию, на Министра Обороны напали трое бандитов. Ваши действия?", type: "text" },
+    { text: "У кого сотрудники ВП могут попросить помощи, ради поимки прогульщиков?", type: "text" },
+    { text: "В каких случаях разрешается заехать на ВЧ без запроса?", type: "text" },
+    { text: "Что грозит сотруднику ВП при распространения ответов из экзамена или её попытке?", type: "text" },
+    { text: "Что грозит сотруднику ВП при трёхразовом провале экзамена?", type: "text" },
+    { text: "В каких случаях разрешено заниматся надзорной деятельностью без формы?", type: "text" },
+    { text: "Сколько времени даётся на прохождение переатестации?", type: "text" },
+    { text: "В каких случаях Куратор ВП может потребовать пройти внеплановую переатестацию?", type: "text" },
 ];
 
-const retrainingQuestions = [
-    { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
-    { text: "Как должны разговаривать сотрудники военной полиции?" },
-    { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?(Не с разрешения и не в обед)" },
-    { text: "Что должны иметь при себе сотрудники военной полиции при проверке ВЧ на ЧС?" },
-    { text: "Что должен делать сотрудник ВП при проверке ВЧ на ЧС, помимо самой проверки?" },
-    { text: "Что запрещается сотрудникам ВП при выполнении спец.задачи?" },
-    { text: "При каком приказе сотрудник ВП обязан снять маску?" },
-    { text: "Какими цветами должен быть покрашен автомобиль сотрудника ВП?" },
-    { text: "Какая приписка в рации департамента?" },
-    { text: "Сколько минимум минут нужно проверять ВЧ на ЧС?" },
-    { text: "Кому подчиняются сотрудники ВП?" },
-    { text: "Последовательность действий офицера ВП при виде нарушителя?" },
-    { text: "Какие места помимо Военных Частей нужно проверять?" },
-    { text: "Назовите недельную норму проверок состава МО от ВП." },
-    { text: "Какие последствия ждут организацию получившая неудовлетворительную оценку при проверке состава?" },
-    { text: "В какое время запрещается делать проверку состава МО от ВП?" },
-    { text: "Назовите все критерии требующиеся для внесения личного транспортного средства в реестр." },
-    { text: "Какие грузовые транспортные средства можно регистрировать в реестре?" },
-    { text: "Представим ситуацию, вы хотите заехать в СФа, стоите на КПП и видите как воруют маты в грузовом отсеке. Ваши действия?" },
-    { text: "Представим ситуацию, на Министра Обороны напали трое бандитов. Ваши действия?" },
-    { text: "У кого сотрудники ВП могут попросить помощи, ради поимки прогульщиков?" },
-    { text: "В каких случаях разрешается заехать на ВЧ без запроса?" },
-    { text: "Что грозит сотруднику ВП при распространения ответов из экзамена или её попытке?" },
-    { text: "Что грозит сотруднику ВП при трёхразовом провале экзамена?" },
-    { text: "В каких случаях разрешено заниматся надзорной деятельностью без формы?" },
-    { text: "Сколько времени даётся на прохождение переатестации?" },
-    { text: "В каких случаях Куратор ВП может потребовать пройти внеплановую переатестацию?" },
-];
+//==========================================================================================================================================
+//==========================================================================================================================================
+//==========================================================================================================================================
 
 const academyQuestions = [
-    { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?" },
-    { text: "Как должны разговаривать сотрудники военной полиции?" },
-    { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?(Не с разрешения и не в обед)" },
-    { text: "Что должны иметь при себе сотрудники военной полиции при проверке ВЧ на ЧС?" },
-    { text: "Что должен делать сотрудник ВП при проверке ВЧ на ЧС, помимо самой проверки?" },
-    { text: "Что запрещается сотрудникам ВП при выполнении спец.задачи?" },
-    { text: "При каком приказе сотрудник ВП обязан снять маску?" },
-    { text: "Какими цветами должен быть покрашен автомобиль сотрудника ВП?" },
-    { text: "Какая приписка в рации департамента?" },
-    { text: "Сколько минимум минут нужно проверять ВЧ на ЧС?" },
-    { text: "Кому подчиняются сотрудники ВП?" },
-    { text: "Последовательность действий офицера ВП при виде нарушителя?" },
-    { text: "Какие места помимо Военных Частей нужно проверять?" },
-    { text: "Назовите недельную норму проверок состава МО от ВП." },
-    { text: "Какие последствия ждут организацию получившая неудовлетворительную оценку при проверке состава?" },
+    { text: "Что обязаны знать и соблюдать сотрудники Военной полиции?", type: "text",
+        type: "multiple",
+        options: [
+            "Устав МО, Устав ВП",
+            "Устав МЮ",
+            "Федеральное постановление, уголовный кодекс, административный кодекс",
+            "Всё выше перечисленное"
+        ],
+        correctAnswers: ["Устав МО, Устав ВП", "Федеральное постановление, уголовный кодекс, административный кодекс"],
+        maxSelections: 2
+    },
+    { text: "Как должны разговаривать сотрудники военной полиции?", type: "text" },
+    { text: "При каких условиях сотрудник ВП может покинуть свою ВЧ без формы в рабочее время?(Не с разрешения и не в обед)", type: "text" },
+    { text: "Что должны иметь при себе сотрудники военной полиции при проверке ВЧ на ЧС?", type: "text" },
+    { text: "Что должен делать сотрудник ВП при проверке ВЧ на ЧС, помимо самой проверки?", type: "text" },
+    { text: "Что запрещается сотрудникам ВП при выполнении спец.задачи?", type: "text" },
+    { text: "При каком приказе сотрудник ВП обязан снять маску?",
+        type: "multiple",
+        options: [
+            "Приказ Министра Обороны",
+            "Приказ Куратора Дельты",
+            "Приказ Сотрудника Пра-во",
+            "Приказ Руководста армии"
+        ],
+        correctAnswers: ["Приказ Министра Обороны", "Приказ Руководста армии"],
+        maxSelections: 2
+    },
+    { text: "Какими цветами должен быть покрашен автомобиль сотрудника ВП?", type: "text" },
+    { text: "Какая приписка в рации департамента?", type: "text" },
+        { text: "Сколько минимум минут нужно проверять ВЧ на ЧС?", type: "text",
+        type: "multiple",
+        options: [
+            "4 минуты",
+            "5 минут",
+            "3 минуты",
+            "Минимального лимита нет"
+        ],
+        correctAnswers: ["3 минуты"],
+        maxSelections: 1
+    },
+    { text: "Кому подчиняются сотрудники ВП?", type: "text" },
+    { text: "Последовательность действий офицера ВП при виде нарушителя?", type: "text" },
+    { text: "Какие места помимо Военных Частей нужно проверять?", type: "text" },
+    { text: "Назовите недельную норму проверок состава МО от ВП.", type: "text",
+        type: "multiple",
+        options: [
+            "7 раз в неделю",
+            "3 раза в неделю",
+            "5 раз в неделю",
+            "4 раза в неделю"
+        ],
+        correctAnswers: ["3 раза в неделю"],
+        maxSelections: 1
+    },
+    { text: "Какие последствия ждут организацию получившая неудовлетворительную оценку при проверке состава?", type: "text" },
 ];
+
+//==========================================================================================================================================
+//==========================================================================================================================================
+//==========================================================================================================================================
 
 let test = null;
 let blocked = false;
@@ -362,7 +496,11 @@ Arizona RP | Военная Полиция
 
         gradedAnswers.forEach((answer, index) => {
             reportText += `\n${index + 1}. ${escapeHtml(answer.question)}\n`;
-            reportText += `Ответ: ${escapeHtml(answer.answer)}\n`;
+            if (Array.isArray(answer.answer)) {
+                reportText += `Ответ: ${escapeHtml(answer.answer.join(', '))}\n`;
+            } else {
+                reportText += `Ответ: ${escapeHtml(answer.answer)}\n`;
+            }
             reportText += `Оценка: ${answer.correct ? '✅ Правильно' : '❌ Неправильно'}\n`;
             reportText += `---------------------------------\n`;
         });
@@ -412,10 +550,11 @@ Arizona RP | Военная Полиция
             localStorage.setItem("adminFiles", JSON.stringify(savedFiles));
         }
         
-        const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
-        if (!gradedFile.isUnlockFile) {
+        // [ИСПРАВЛЕНО] Сохраняем в статистику ТОЛЬКО если это оцененный файл (не разблокировка)
+        if (!gradedFile.isUnlockFile && gradedFile.score !== undefined) {
+            const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
             statistics.push({
-                id: Date.now().toString(), // Добавляем ID для удаления
+                id: Date.now().toString(),
                 username: username,
                 testType: testType,
                 score: gradedFile.score,
@@ -452,10 +591,8 @@ function loadEmployeesData() {
     if (saved) {
         employeesData = JSON.parse(saved);
         
-        // 🔧 АВТОМАТИЧЕСКИЙ ПЕРЕНОС ФАЙЛОВ ПРИ ИЗМЕНЕНИИ ДОЛЖНОСТИ
         console.log('🔄 Проверка изменений в структуре сотрудников...');
         
-        // Создаем карту username -> новая должность
         const usernameToNewPosition = {};
         FIXED_EMPLOYEE_STRUCTURE.forEach(fixedEmp => {
             if (fixedEmp.username !== 'Вакантно') {
@@ -467,7 +604,6 @@ function loadEmployeesData() {
             }
         });
         
-        // Ищем всех сотрудников, которые изменили должность
         const movedEmployees = [];
         
         Object.values(employeesData).forEach(oldEmp => {
@@ -475,7 +611,6 @@ function loadEmployeesData() {
             if (oldUsername !== 'Вакантно' && usernameToNewPosition[oldUsername]) {
                 const newPosition = usernameToNewPosition[oldUsername];
                 
-                // Если сотрудник на другой должности
                 if (oldEmp.id !== newPosition.id) {
                     movedEmployees.push({
                         oldId: oldEmp.id,
@@ -489,7 +624,6 @@ function loadEmployeesData() {
             }
         });
         
-        // Обрабатываем перенос файлов
         movedEmployees.forEach(move => {
             const oldEmp = employeesData[move.oldId];
             const newEmpSlot = employeesData[move.newId];
@@ -500,32 +634,26 @@ function loadEmployeesData() {
                 console.log(`- Экзамены: ${move.files.exam.length} файлов`);
                 console.log(`- Переатт.: ${move.files.retraining.length} файлов`);
                 
-                // Если новый слот уже занят другим сотрудником
                 if (newEmpSlot.username !== 'Вакантно' && newEmpSlot.username !== move.username) {
                     console.warn(`⚠️ ВНИМАНИЕ: Новая должность ${newEmpSlot.position} уже занята ${newEmpSlot.username}!`);
                     
-                    // Ищем вакантное место для нового сотрудника
                     const vacantSlot = Object.values(employeesData).find(emp => 
                         emp.type === newEmpSlot.type && emp.username === 'Вакантно'
                     );
                     
                     if (vacantSlot) {
                         console.log(`🔁 Найден вакантный слот для ${move.username}: ${vacantSlot.position}`);
-                        // Переносим нового сотрудника на вакантное место
                         vacantSlot.username = newEmpSlot.username;
                         vacantSlot.files = { ...newEmpSlot.files };
                         
-                        // Очищаем оригинальный слот
                         newEmpSlot.username = 'Вакантно';
                         newEmpSlot.files = { academy: [], exam: [], retraining: [] };
                     }
                 }
                 
-                // Переносим файлы на новую должность
                 newEmpSlot.files = { ...move.files };
                 newEmpSlot.username = move.username;
                 
-                // Очищаем старую должность
                 oldEmp.username = 'Вакантно';
                 oldEmp.files = {
                     academy: [],
@@ -533,7 +661,6 @@ function loadEmployeesData() {
                     retraining: []
                 };
                 
-                // Обновляем папки
                 newEmpSlot.folders = {
                     academy: `${move.username}_Академия`,
                     exam: `${move.username}_Экзамен`,
@@ -544,15 +671,12 @@ function loadEmployeesData() {
             }
         });
         
-        // Обновляем username для фиксированных сотрудников
         FIXED_EMPLOYEE_STRUCTURE.forEach(fixedEmp => {
             if (employeesData[fixedEmp.id] && employeesData[fixedEmp.id].username !== fixedEmp.username) {
-                // Если username изменилось в структуре
                 if (fixedEmp.username !== 'Вакантно') {
                     const oldUsername = employeesData[fixedEmp.id].username;
                     console.log(`🔄 Обновление username: ${oldUsername} -> ${fixedEmp.username}`);
                     
-                    // Сохраняем файлы если они есть
                     const existingFiles = employeesData[fixedEmp.id].files;
                     
                     employeesData[fixedEmp.id].username = fixedEmp.username;
@@ -566,12 +690,9 @@ function loadEmployeesData() {
             }
         });
         
-        // 🔄 ПРОВЕРКА И ОЧИСТКА КУРСАНТСКИХ ПАПОК
         console.log('🧹 Проверка и очистка курсантских папок...');
         Object.values(employeesData).forEach(emp => {
-            // Если это позиция курсанта (cadet_1, cadet_2, cadet_3) и вакантно
             if (emp.id.includes('cadet') && emp.username === 'Вакантно') {
-                // Проверяем, нет ли файлов у вакантного курсанта
                 const totalFiles = (emp.files.academy?.length || 0) + 
                                   (emp.files.exam?.length || 0) + 
                                   (emp.files.retraining?.length || 0);
@@ -579,14 +700,12 @@ function loadEmployeesData() {
                 if (totalFiles > 0) {
                     console.log(`🧹 Очистка файлов у вакантного курсанта ${emp.position}: ${totalFiles} файлов`);
                     
-                    // Находим владельца этих файлов по содержимому
                     const allFiles = [
                         ...(emp.files.academy || []),
                         ...(emp.files.exam || []),
                         ...(emp.files.retraining || [])
                     ];
                     
-                    // Ищем в файлах упоминания имен
                     allFiles.forEach(file => {
                         const fileContent = file.content || '';
                         const nameMatch = fileContent.match(/Имя[:\s]+([^\n]+)/i) || 
@@ -596,7 +715,6 @@ function loadEmployeesData() {
                             const foundName = nameMatch[1].trim();
                             console.log(`🔍 В файле ${file.name} найдено имя: ${foundName}`);
                             
-                            // Ищем сотрудника с этим именем
                             const realOwner = Object.values(employeesData).find(e => 
                                 e.username !== 'Вакантно' && 
                                 e.username.toLowerCase() === foundName.toLowerCase()
@@ -604,7 +722,6 @@ function loadEmployeesData() {
                             
                             if (realOwner) {
                                 console.log(`✅ Найден реальный владелец: ${realOwner.username} (${realOwner.position})`);
-                                // Переносим файл реальному владельцу
                                 const fileType = file.name.toLowerCase().includes('академи') ? 'academy' :
                                                file.name.toLowerCase().includes('экзамен') ? 'exam' :
                                                file.name.toLowerCase().includes('переатт') ? 'retraining' : 'academy';
@@ -619,7 +736,6 @@ function loadEmployeesData() {
                         }
                     });
                     
-                    // Очищаем курсантскую папку
                     emp.files = {
                         academy: [],
                         exam: [],
@@ -932,12 +1048,44 @@ function actuallyStartTest() {
     
     saveTestState();
     document.getElementById("unlockBtn").style.display = "inline-block";
+    document.getElementById("adminUnlockBtn").style.display = "inline-block";
     document.getElementById("finishBtn").style.display = "inline-block";
     showMessage("Тест начат! Не покидайте вкладку.", "success");
     
     resetInactivityTimer();
     
     renderCurrentTest();
+}
+
+function adminUnblockTest() {
+    if (!test) {
+        showError("Нет активного теста для разблокировки!");
+        return;
+    }
+    
+    if (!authenticateAdmin()) {
+        showError("Только для администратора!");
+        return;
+    }
+    
+    if (test.blocked) {
+        blocked = false;
+        test.blocked = false;
+        delete test.unlockCode;
+        
+        document.querySelectorAll("input, button").forEach(el => {
+            if (!el.id.includes("admin") && el.id !== "username" && !el.closest(".tabs")) {
+                el.disabled = false;
+            }
+        });
+        
+        saveTestState();
+        showMessage("Тест успешно разблокирован администратором!", "success");
+        resetInactivityTimer();
+        renderCurrentTest();
+    } else {
+        showError("Тест не заблокирован!", "info");
+    }
 }
 
 function renderCurrentTest() {
@@ -1027,11 +1175,62 @@ function renderRetraining() {
     renderTestQuestions();
 }
 
-function renderTestQuestions() {
-    const q = test.shuffledQuestions[test.current];
-    const area = document.getElementById("mainArea");
+function renderMultipleChoiceQuestion(q, currentIndex) {
+    const savedAnswers = test.answers[currentIndex];
+    let selectedOptions = [];
     
-    area.innerHTML = `
+    if (savedAnswers && Array.isArray(savedAnswers)) {
+        selectedOptions = savedAnswers;
+    } else if (savedAnswers && typeof savedAnswers === 'string') {
+        selectedOptions = [savedAnswers];
+    } else {
+        selectedOptions = [];
+    }
+    
+    const maxSelections = q.maxSelections || 2;
+    
+    return `
+        <div class="question-box">
+            <div class="question-header">
+                <span class="question-counter">Вопрос ${test.current + 1} из ${TEST_COUNT}</span>
+                <span class="selection-limit">✅ Выберите до ${maxSelections} вариантов</span>
+            </div>
+            
+            <div class="question-text-large">${escapeHtml(q.text)}</div>
+            
+            <div class="options-grid">
+                ${q.options.map((option) => {
+                    const isSelected = selectedOptions.includes(option);
+                    return `
+                        <div class="option-card ${isSelected ? 'selected' : ''}" data-option-value="${escapeHtml(option)}">
+                            <div class="option-check">
+                                <span class="checkmark">${isSelected ? '✓' : ''}</span>
+                            </div>
+                            <div class="option-text">${escapeHtml(option)}</div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            
+            <div class="selected-info">
+                <span>📋 Выбрано: <strong id="selectedCount">${selectedOptions.length}</strong> / ${maxSelections}</span>
+            </div>
+            
+            <div class="question-actions">
+                <button class="btn btn-primary" id="nextBtn">
+                    ${test.current < TEST_COUNT - 1 ? "Следующий вопрос →" : "✓ Завершить тест"}
+                </button>
+            </div>
+            
+            <div class="activity-warning">
+                ⚠️ Система отслеживает активность!
+            </div>
+        </div>
+    `;
+}
+
+function renderTextQuestion(q, currentIndex) {
+    return `
         <div class="question-box">
             <h3>Вопрос ${test.current + 1} из ${TEST_COUNT}</h3>
             <p><strong>${q.text}</strong></p>
@@ -1047,29 +1246,219 @@ function renderTestQuestions() {
             </div>
         </div>
     `;
+}
 
-    const answerInput = document.getElementById("answerInput");
-    answerInput.addEventListener("input", (e) => {
-        trackActivity();
-        test.answers[test.current] = e.target.value.trim();
-        saveTestState();
-    });
+function renderTestQuestions() {
+    const q = test.shuffledQuestions[test.current];
+    const area = document.getElementById("mainArea");
     
-    answerInput.addEventListener("keypress", (e) => {
-        trackActivity();
-        if (e.key === "Enter") {
-            nextQuestion();
+    if (q.type === 'multiple' && q.options && q.options.length > 0) {
+        area.innerHTML = renderMultipleChoiceQuestion(q, test.current);
+        
+        const optionCards = document.querySelectorAll('.option-card');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const maxSelections = q.maxSelections || 2;
+        
+        const updateSelection = () => {
+            const selectedOptions = Array.from(document.querySelectorAll('.option-card.selected'))
+                .map(card => card.dataset.optionValue);
+            
+            test.answers[test.current] = selectedOptions;
+            saveTestState();
+            
+            if (selectedCountSpan) {
+                selectedCountSpan.textContent = selectedOptions.length;
+            }
+        };
+        
+        optionCards.forEach(card => {
+            card.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                const isSelected = card.classList.contains('selected');
+                const currentSelected = document.querySelectorAll('.option-card.selected').length;
+                
+                if (!isSelected && currentSelected >= maxSelections) {
+                    showError(`Можно выбрать не более ${maxSelections} вариантов!`);
+                    return;
+                }
+                
+                if (isSelected) {
+                    card.classList.remove('selected');
+                    card.querySelector('.checkmark').textContent = '';
+                } else {
+                    card.classList.add('selected');
+                    card.querySelector('.checkmark').textContent = '✓';
+                }
+                
+                updateSelection();
+            });
+        });
+        
+        const nextBtn = document.getElementById("nextBtn");
+        if (nextBtn) {
+            nextBtn.addEventListener("click", () => {
+                const selectedOptions = test.answers[test.current];
+                if (!selectedOptions || selectedOptions.length === 0) {
+                    showError("Пожалуйста, выберите хотя бы один вариант ответа!");
+                    return;
+                }
+                nextQuestion();
+            });
         }
+        
+    } else {
+        area.innerHTML = renderTextQuestion(q, test.current);
+        
+        const answerInput = document.getElementById("answerInput");
+        if (answerInput) {
+            answerInput.addEventListener("input", (e) => {
+                trackActivity();
+                test.answers[test.current] = e.target.value.trim();
+                saveTestState();
+            });
+            
+            answerInput.addEventListener("keypress", (e) => {
+                trackActivity();
+                if (e.key === "Enter") {
+                    nextQuestion();
+                }
+            });
+            
+            answerInput.addEventListener("mousedown", trackActivity);
+            answerInput.focus();
+        }
+        
+        const nextBtn = document.getElementById("nextBtn");
+        if (nextBtn) {
+            nextBtn.addEventListener("click", () => {
+                trackActivity();
+                nextQuestion();
+            });
+        }
+    }
+}
+
+// [НОВОЕ] Страница предварительного просмотра всех ответов
+function renderReviewPage() {
+    const area = document.getElementById("mainArea");
+    const testTypeName = getTestTypeName(test.testType);
+    
+    let answersHtml = '';
+    let canFinish = true;
+    
+    test.shuffledQuestions.forEach((q, index) => {
+        const userAnswer = test.answers[index];
+        let answerDisplay = '';
+        
+        if (q.type === 'multiple' && q.options) {
+            // Для вопросов с множественным выбором показываем выбранные варианты
+            const selectedOptions = Array.isArray(userAnswer) ? userAnswer : [];
+            answerDisplay = `
+                <div class="review-multiple-answers">
+                    ${q.options.map(option => {
+                        const isSelected = selectedOptions.includes(option);
+                        return `
+                            <span class="review-option ${isSelected ? 'review-option-selected' : 'review-option-unselected'}">
+                                ${isSelected ? '✓' : '○'} ${escapeHtml(option)}
+                            </span>
+                        `;
+                    }).join('')}
+                </div>
+                <div class="review-edit">
+                    <button class="btn small review-edit-btn" data-question-index="${index}">✏️ Редактировать</button>
+                </div>
+            `;
+        } else {
+            // Для текстовых вопросов
+            const answerText = userAnswer || "Нет ответа";
+            answerDisplay = `
+                <div class="review-answer-text">${escapeHtml(answerText)}</div>
+                <div class="review-edit">
+                    <button class="btn small review-edit-btn" data-question-index="${index}">✏️ Редактировать</button>
+                </div>
+            `;
+        }
+        
+        answersHtml += `
+            <div class="review-item" data-question-index="${index}">
+                <div class="review-question-header">
+                    <span class="review-question-number">Вопрос ${index + 1}</span>
+                    <span class="review-question-text">${escapeHtml(q.text)}</span>
+                </div>
+                <div class="review-answer">
+                    ${answerDisplay}
+                </div>
+            </div>
+        `;
     });
     
-    answerInput.addEventListener("mousedown", trackActivity);
+    area.innerHTML = `
+        <div class="review-container">
+            <div class="review-header">
+                <h2>📋 Предварительный просмотр ответов</h2>
+                <p>Проверьте все свои ответы перед завершением ${testTypeName.toLowerCase()}</p>
+                <div class="review-stats">
+                    <div class="review-stat">
+                        <span>📝 Всего вопросов:</span>
+                        <strong>${TEST_COUNT}</strong>
+                    </div>
+                    <div class="review-stat">
+                        <span>✅ Отвечено:</span>
+                        <strong>${Object.keys(test.answers).length}</strong>
+                    </div>
+                    <div class="review-stat">
+                        <span>❌ Без ответа:</span>
+                        <strong>${TEST_COUNT - Object.keys(test.answers).length}</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="review-answers-list">
+                ${answersHtml}
+            </div>
+            
+            <div class="review-actions">
+                <button class="btn ghost" id="backToTestBtn">← Вернуться к тесту</button>
+                <button class="btn" id="confirmFinishBtn" ${Object.keys(test.answers).length < TEST_COUNT ? 'disabled' : ''}>
+                    ✅ Завершить тест
+                </button>
+            </div>
+            
+            ${Object.keys(test.answers).length < TEST_COUNT ? `
+                <div class="review-warning">
+                    ⚠️ Вы ответили не на все вопросы. Завершить тест можно только после ответа на все вопросы.
+                </div>
+            ` : ''}
+        </div>
+    `;
     
-    document.getElementById("nextBtn").addEventListener("click", () => {
-        trackActivity();
-        nextQuestion();
+    // Обработчик возврата к тесту
+    document.getElementById("backToTestBtn").addEventListener("click", () => {
+        renderCurrentTest();
     });
     
-    answerInput.focus();
+    // Обработчики кнопок редактирования
+    document.querySelectorAll(".review-edit-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const questionIndex = parseInt(btn.dataset.questionIndex);
+            test.current = questionIndex;
+            saveTestState();
+            renderCurrentTest();
+        });
+    });
+    
+    // Обработчик завершения теста
+    const confirmFinishBtn = document.getElementById("confirmFinishBtn");
+    if (confirmFinishBtn) {
+        confirmFinishBtn.addEventListener("click", () => {
+            if (Object.keys(test.answers).length >= TEST_COUNT) {
+                finishTest();
+            } else {
+                showError("Пожалуйста, ответьте на все вопросы перед завершением теста!");
+            }
+        });
+    }
 }
 
 function nextQuestion() {
@@ -1078,13 +1467,13 @@ function nextQuestion() {
         saveTestState();
         renderCurrentTest();
     } else {
-        finishTest();
+        renderReviewPage();
     }
 }
 
 function finishTestManually() {
     if (confirm("Вы уверены, что хотите завершить тест? Все ответы будут сохранены, но файл не будет скачан.")) {
-        finishTestWithoutDownload();
+        renderReviewPage();
     }
 }
 
@@ -1093,6 +1482,7 @@ function finishTest() {
     const timeSpent = Math.round((endTime - test.startTime) / 1000 / 60);
     const testTypeName = getTestTypeName(test.testType);
     
+    // [ИСПРАВЛЕНО] Просто сохраняем ответы без оценки
     let reportText = `${testTypeName.toUpperCase()} ВОЕННОЙ ПОЛИЦИИ - РЕЗУЛЬТАТЫ
 =================================
 
@@ -1109,8 +1499,15 @@ function finishTest() {
 `;
 
     test.shuffledQuestions.forEach((q, i) => {
+        let answerText = test.answers[i];
+        if (Array.isArray(answerText)) {
+            answerText = answerText.join(', ');
+        } else if (!answerText) {
+            answerText = "Нет ответа";
+        }
+        
         reportText += `\n${i + 1}. ${q.text}\n`;
-        reportText += `Ответ: ${test.answers[i] || "Нет ответа"}\n`;
+        reportText += `Ответ: ${answerText}\n`;
         reportText += `---------------------------------\n`;
     });
 
@@ -1118,7 +1515,7 @@ function finishTest() {
 
 =================================
 Arizona RP | Военная Полиция
-Тест завершен`;
+Тест завершен. Ожидает оценки администратора.`;
 
     const encrypted = CryptoJS.AES.encrypt(reportText, AES_KEY).toString();
     const blob = new Blob([btoa(encrypted)], { 
@@ -1128,7 +1525,7 @@ Arizona RP | Военная Полиция
     saveAs(blob, `${test.username}_${testTypeName}_${timeSpent}мин_результаты.docx`);
 
     saveTestToPlayerFolder(test, timeSpent);
-    saveTestResultForStatistics(test, timeSpent);
+    saveTestResultForStatistics(test, timeSpent, 0, 0, false);
 
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
@@ -1137,6 +1534,7 @@ Arizona RP | Военная Полиция
 
     clearTestState();
     document.getElementById("unlockBtn").style.display = "none";
+    document.getElementById("adminUnlockBtn").style.display = "none";
     document.getElementById("finishBtn").style.display = "none";
 
     document.getElementById("mainArea").innerHTML = `
@@ -1166,7 +1564,7 @@ function finishTestWithoutDownload() {
     const testTypeName = getTestTypeName(test.testType);
     
     saveTestToPlayerFolder(test, timeSpent);
-    saveTestResultForStatistics(test, timeSpent);
+    saveTestResultForStatistics(test, timeSpent, 0, 0, false);
 
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
@@ -1175,12 +1573,73 @@ function finishTestWithoutDownload() {
 
     clearTestState();
     document.getElementById("unlockBtn").style.display = "none";
+    document.getElementById("adminUnlockBtn").style.display = "none";
     document.getElementById("finishBtn").style.display = "none";
 
     document.getElementById("mainArea").innerHTML = `
         <div class="question-box">
             <h2>✅ ${testTypeName} завершён!</h2>
             <p><strong>${escapeHtml(test.username)}</strong>, ваш ${testTypeName.toLowerCase()} успешно завершён.</p>
+            <p><strong>Файл не был скачан.</strong> Результаты сохранены в системе.</p>
+            <p>Ожидайте оценки администратора.</p>
+            <div style="margin-top: 20px;">
+                <button class="btn" id="restartBtn">Пройти тест снова</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+        document.getElementById("username").value = "";
+        document.querySelectorAll("input, button").forEach(el => el.disabled = false);
+        showMessage("Готово к новому тесту!", "success");
+        renderCurrentTest();
+    });
+}
+
+function finishTestWithoutDownload() {
+    const endTime = new Date();
+    const timeSpent = Math.round((endTime - test.startTime) / 1000 / 60);
+    const testTypeName = getTestTypeName(test.testType);
+    
+    let correctCount = 0;
+    test.shuffledQuestions.forEach((q, i) => {
+        const userAnswer = test.answers[i];
+        if (q.type === 'multiple') {
+            if (q.correctAnswers && Array.isArray(q.correctAnswers) && userAnswer && Array.isArray(userAnswer)) {
+                const sortedUser = [...userAnswer].sort();
+                const sortedCorrect = [...q.correctAnswers].sort();
+                if (sortedUser.length === sortedCorrect.length && 
+                    sortedUser.every((val, index) => val === sortedCorrect[index])) {
+                    correctCount++;
+                }
+            }
+        } else {
+            if (userAnswer && userAnswer.trim() !== '') correctCount++;
+        }
+    });
+    
+    const score = Math.round((correctCount / TEST_COUNT) * 100);
+    const passed = score >= 70;
+    
+    saveTestToPlayerFolder(test, timeSpent);
+    saveTestResultForStatistics(test, timeSpent, score, correctCount, passed);
+
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+    }
+
+    clearTestState();
+    document.getElementById("unlockBtn").style.display = "none";
+    document.getElementById("adminUnlockBtn").style.display = "none";
+    document.getElementById("finishBtn").style.display = "none";
+
+    document.getElementById("mainArea").innerHTML = `
+        <div class="question-box">
+            <h2>✅ ${testTypeName} завершён!</h2>
+            <p><strong>${escapeHtml(test.username)}</strong>, ваш ${testTypeName.toLowerCase()} успешно завершён.</p>
+            <p><strong>Результат: ${score}% (${correctCount}/${TEST_COUNT})</strong></p>
+            <p>${passed ? '🎉 Поздравляем! Тест пройден успешно!' : '😔 К сожалению, тест не пройден.'}</p>
             <p><strong>Файл не был скачан.</strong> Результаты сохранены в системе.</p>
             <p>Ожидайте оценки администратора.</p>
             <div style="margin-top: 20px;">
@@ -1231,18 +1690,18 @@ function saveTestToPlayerFolder(testData, timeSpent) {
     ));
 }
 
-function saveTestResultForStatistics(testData, timeSpent) {
+function saveTestResultForStatistics(testData, timeSpent, score, correctCount, passed) {
     const testResult = {
         id: Date.now().toString(),
         username: testData.username,
         testType: testData.testType,
-        score: 0,
+        score: score,
         timeSpent: timeSpent,
         totalQuestions: TEST_COUNT,
-        correctAnswers: 0,
+        correctAnswers: correctCount,
         date: new Date().toISOString(),
         graded: false,
-        passed: false
+        passed: passed
     };
     
     const pendingResults = JSON.parse(localStorage.getItem('pendingTestResults') || '[]');
@@ -1366,7 +1825,7 @@ function blockTest() {
     test.blocked = true;
 
     document.querySelectorAll("input, button").forEach(el => {
-        if (!el.id.includes("unlock") && el.id !== "username" && !el.closest(".tabs")) {
+        if (!el.id.includes("unlock") && !el.id.includes("adminUnlock") && el.id !== "username" && !el.closest(".tabs")) {
             el.disabled = true;
         }
     });
@@ -1448,6 +1907,12 @@ function renderBlockedScreen() {
                 <input type="text" id="unlockCodeInput" placeholder="Введите код от администратора" style="margin: 10px 0; width: 100%;">
                 <button class="btn" id="submitUnlockBtn">Разблокировать тест</button>
             </div>
+            
+            <div style="margin-top: 15px;">
+                <button class="btn warning" id="adminUnlockBtn" style="background: var(--warning); color: black;">
+                    🔓 Админ-разблокировка
+                </button>
+            </div>
         </div>
     `;
 
@@ -1470,6 +1935,8 @@ function renderBlockedScreen() {
             showError("Неверный код разблокировки!");
         }
     });
+    
+    document.getElementById("adminUnlockBtn").addEventListener("click", adminUnblockTest);
 }
 
 function unblockTest() {
@@ -1519,7 +1986,6 @@ function checkEmployeePromotion(oldId, newId, username) {
         console.log('- Экзамены:', oldEmployee.files.exam.length, 'файлов');
         console.log('- Переатт.:', oldEmployee.files.retraining.length, 'файлов');
         
-        // Создаем резервную копию
         localStorage.setItem(`backup_${username}_${Date.now()}`, 
             JSON.stringify(oldEmployee.files));
     }
@@ -1583,7 +2049,6 @@ function initUI() {
     loadTestState();
     updatePlayersDatalist();
     
-    // 🔧 ОТСЛЕЖИВАНИЕ ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК
     document.addEventListener('visibilitychange', () => {
         if (document.hidden && test && !test.blocked) {
             console.log('🚫 Пользователь покинул вкладку!');
@@ -1592,7 +2057,6 @@ function initUI() {
         }
     });
     
-    // 🔧 ОТСЛЕЖИВАНИЕ ПОТЕРИ ФОКУСА ОКНА
     window.addEventListener('blur', () => {
         if (test && !test.blocked) {
             setTimeout(() => {
@@ -1647,8 +2111,14 @@ function initUI() {
     document.getElementById("startBtn").addEventListener("click", showDisclaimer);
     document.getElementById("finishBtn").addEventListener("click", finishTestManually);
     document.getElementById("unlockBtn").addEventListener("click", unblockTest);
+    
+    const adminUnlockBtn = document.getElementById("adminUnlockBtn");
+    if (adminUnlockBtn) {
+        adminUnlockBtn.addEventListener("click", adminUnblockTest);
+    }
 
     document.getElementById("unlockBtn").style.display = "none";
+    if (adminUnlockBtn) adminUnlockBtn.style.display = "none";
 
     setInterval(() => {
         if (test && !test.blocked) {
@@ -1688,7 +2158,7 @@ function logoutAdmin() {
     renderAcademy();
 }
 
-// Функции админ-панели
+// Функции админ-панели (остаются без изменений)
 function handleFileUpload(e) {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
@@ -1913,12 +2383,10 @@ function openGradingPanel(file, fileIndex) {
             const totalCount = answers.length;
             let correctCount = answers.filter(a => a.correct).length;
             
-            // Функция обновления статистики
             const updateStats = () => {
                 correctCount = answers.filter(a => a.correct).length;
                 const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
                 
-                // Обновляем статистику
                 gradingStats.innerHTML = `
                     <div class="live-stats">
                         <div class="live-counter">
@@ -1945,13 +2413,11 @@ function openGradingPanel(file, fileIndex) {
                 return score;
             };
             
-            // Инициализируем статистику
             updateStats();
             
             const extractedUsername = extractUsernameFromFilename(file.name);
             const testType = extractTestTypeFromFilename(file.name);
             
-            // Создаем HTML для каждого ответа
             answersList.innerHTML = `
                 <div class="grading-container">
                     <div class="quick-grading-actions">
@@ -2037,13 +2503,12 @@ function openGradingPanel(file, fileIndex) {
                 </div>
             `;
 
-            // Функция для создания эффекта клика
             const createClickEffect = (element, x, y) => {
                 const feedback = element.querySelector('.click-feedback');
                 feedback.style.left = `${x}px`;
                 feedback.style.top = `${y}px`;
                 feedback.classList.remove('click-animation');
-                void feedback.offsetWidth; // Триггер reflow
+                void feedback.offsetWidth;
                 feedback.classList.add('click-animation');
                 
                 setTimeout(() => {
@@ -2051,40 +2516,34 @@ function openGradingPanel(file, fileIndex) {
                 }, 500);
             };
 
-            // Обработчик клика по всей карточке
             document.querySelectorAll('.answer-full-card').forEach(card => {
                 card.addEventListener('click', (e) => {
                     if (e.target.closest('.toggle-label') || e.target.closest('.quick-btn')) {
-                        return; // Не обрабатываем клики по кнопкам внутри
+                        return;
                     }
                     
                     const index = parseInt(card.dataset.index);
                     answers[index].correct = !answers[index].correct;
                     
-                    // Эффект клика
                     const rect = card.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     const y = e.clientY - rect.top;
                     createClickEffect(card, x, y);
                     
-                    // Обновляем UI
                     updateAnswerCard(index, answers[index].correct);
                     updateStats();
                     
-                    // Звуковой фидбек (опционально)
                     if (answers[index].correct) {
                         playSuccessSound();
                     }
                 });
                 
-                // Обработчик клавиши пробел
                 card.addEventListener('keydown', (e) => {
                     if (e.key === ' ' || e.key === 'Spacebar') {
                         e.preventDefault();
                         const index = parseInt(card.dataset.index);
                         answers[index].correct = !answers[index].correct;
                         
-                        // Эффект в центре карточки
                         const rect = card.getBoundingClientRect();
                         createClickEffect(card, rect.width / 2, rect.height / 2);
                         
@@ -2094,7 +2553,6 @@ function openGradingPanel(file, fileIndex) {
                 });
             });
 
-            // Обработчики чекбоксов
             document.querySelectorAll('.toggle-checkbox').forEach(cb => {
                 cb.addEventListener('change', (e) => {
                     e.stopPropagation();
@@ -2105,7 +2563,6 @@ function openGradingPanel(file, fileIndex) {
                 });
             });
 
-            // Обработчики быстрых кнопок
             document.querySelectorAll('.quick-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -2122,7 +2579,6 @@ function openGradingPanel(file, fileIndex) {
                 });
             });
 
-            // Обработчики массовых действий
             document.getElementById('markAllCorrect')?.addEventListener('click', () => {
                 answers.forEach((answer, index) => {
                     answer.correct = true;
@@ -2150,7 +2606,6 @@ function openGradingPanel(file, fileIndex) {
                 showMessage('Все ответы сброшены', 'info');
             });
 
-            // Функция обновления карточки ответа
             function updateAnswerCard(index, isCorrect) {
                 const card = document.querySelector(`.answer-full-card[data-index="${index}"]`);
                 const checkbox = document.querySelector(`.toggle-checkbox[data-index="${index}"]`);
@@ -2175,9 +2630,7 @@ function openGradingPanel(file, fileIndex) {
                 }
             }
 
-            // Функция звукового фидбека (опционально)
             function playSuccessSound() {
-                // Можно добавить звуковые эффекты при желании
                 console.log('✅ Правильный ответ отмечен');
             }
 
@@ -2213,7 +2666,6 @@ function openGradingPanel(file, fileIndex) {
 
             gradingPanel.style.display = 'block';
             
-            // Фокус на первый ответ для удобства навигации
             setTimeout(() => {
                 const firstCard = document.querySelector('.answer-full-card');
                 if (firstCard) {
@@ -2302,14 +2754,13 @@ function playSound(type) {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
             if (type === 'correct') {
-                // Звук правильного ответа
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
                 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
                 
-                oscillator.frequency.value = 523.25; // Нота C5
+                oscillator.frequency.value = 523.25;
                 oscillator.type = 'sine';
                 
                 gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
@@ -2318,14 +2769,13 @@ function playSound(type) {
                 oscillator.start();
                 oscillator.stop(audioContext.currentTime + 0.5);
             } else if (type === 'incorrect') {
-                // Звук неправильного ответа
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
                 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
                 
-                oscillator.frequency.value = 349.23; // Нота F4
+                oscillator.frequency.value = 349.23;
                 oscillator.type = 'sawtooth';
                 
                 gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
@@ -2418,7 +2868,6 @@ function calculateStats() {
             id: f.id
         }));
     
-    // Рассчитываем тренды
     const lastMonthResults = uniqueResults.filter(result => {
         const resultDate = new Date(result.date);
         const monthAgo = new Date();
@@ -3220,7 +3669,6 @@ function openFolderModal(employeeId, folderType) {
                 📝 Файлы появляются здесь после оценки администратором или блокировки теста
             </div>
             
-            <!-- КНОПКА ЗАГРУЗКИ ФАЙЛА -->
             <div style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
                 <h4 style="margin-top: 0; color: var(--accent);">📤 Загрузить файл в папку</h4>
                 <input type="file" id="folderFileInput" accept=".docx,.txt,.pdf" style="display: none;">
@@ -3447,7 +3895,6 @@ function getAllFilesFromEmployees() {
     
     Object.values(employeesData).forEach(emp => {
         if (emp.username !== 'Вакантно' && emp.files) {
-            // Собираем файлы из всех папок
             ['academy', 'exam', 'retraining'].forEach(folderType => {
                 if (emp.files[folderType] && Array.isArray(emp.files[folderType])) {
                     emp.files[folderType].forEach(file => {
@@ -3458,7 +3905,6 @@ function getAllFilesFromEmployees() {
                             employeePosition: emp.position,
                             folderType: folderType,
                             folderName: getTestTypeName(folderType),
-                            // Для сортировки по дате
                             sortDate: file.id ? parseInt(file.id) : Date.now()
                         });
                     });
@@ -3472,24 +3918,19 @@ function getAllFilesFromEmployees() {
 
 // === ФУНКЦИЯ ОТКРЫТИЯ МОДАЛЬНОГО ОКНА ВСЕХ ФАЙЛОВ ===
 function openAllFilesModal() {
-    // Собираем все файлы
     const allFiles = getAllFilesFromEmployees();
     
-    // Сортировка: сначала новые, потом по алфавиту, потом по типу
     allFiles.sort((a, b) => {
-        // 1. По дате (новые сверху)
         if (b.sortDate !== a.sortDate) {
             return b.sortDate - a.sortDate;
         }
         
-        // 2. По алфавиту имени сотрудника
         const nameA = a.employeeUsername.toLowerCase();
         const nameB = b.employeeUsername.toLowerCase();
         if (nameA !== nameB) {
             return nameA.localeCompare(nameB);
         }
         
-        // 3. По типу теста (Экзамен → Академия → Переаттестация → Разблокировки)
         const typeOrder = {
             'exam': 1,
             'academy': 2,
@@ -3501,7 +3942,6 @@ function openAllFilesModal() {
         return orderA - orderB;
     });
     
-    // Создаем модальное окно
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.style.zIndex = '10002';
@@ -3513,7 +3953,6 @@ function openAllFilesModal() {
                 <button class="btn small ghost" id="closeAllFilesModal">✖ Закрыть</button>
             </div>
             
-            <!-- Статистика -->
             <div style="background: rgba(255,255,255,0.05); padding: 10px 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                     <div>
@@ -3531,7 +3970,6 @@ function openAllFilesModal() {
                 </div>
             </div>
             
-            <!-- Фильтры и поиск -->
             <div style="margin-bottom: 20px;">
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                     <input type="text" 
@@ -3563,15 +4001,11 @@ function openAllFilesModal() {
                 </div>
             </div>
             
-            <!-- Список файлов -->
             <div id="allFilesListContainer" style="overflow-y: auto; max-height: 55vh; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.2);">
-                <div id="allFilesList">
-                    <!-- Файлы будут загружены здесь -->
-                </div>
+                <div id="allFilesList"></div>
                 <div id="allFilesPagination" style="margin-top: 15px; text-align: center;"></div>
             </div>
             
-            <!-- Информация -->
             <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 0.9em;">
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                     <div>💡 <strong>Сортировка:</strong> Дата ↓ → Имя ↑ → Тип теста</div>
@@ -3584,10 +4018,8 @@ function openAllFilesModal() {
     
     document.body.appendChild(modal);
     
-    // Рендерим список файлов
     renderAllFilesList(allFiles);
     
-    // Обработчики событий
     document.getElementById('closeAllFilesModal').addEventListener('click', () => {
         modal.remove();
     });
@@ -3601,7 +4033,6 @@ function openAllFilesModal() {
         renderAllFilesList(allFiles, e.target.value);
     });
     
-    // Обработчики фильтров
     document.querySelectorAll('.file-type-filter').forEach(checkbox => {
         checkbox.addEventListener('change', () => {
             renderAllFilesList(allFiles);
@@ -3609,14 +4040,12 @@ function openAllFilesModal() {
     });
 }
 
-// === ФУНКЦИЯ РЕНДЕРИНГА СПИСКА ФАЙЛОВ ===
 function renderAllFilesList(allFiles, searchTerm = '') {
     const container = document.getElementById('allFilesList');
     const paginationContainer = document.getElementById('allFilesPagination');
     
     if (!container) return;
     
-    // Применяем поиск
     let filteredFiles = [...allFiles];
     
     if (searchTerm) {
@@ -3629,13 +4058,11 @@ function renderAllFilesList(allFiles, searchTerm = '') {
         );
     }
     
-    // Применяем фильтры по типу
     const activeFilters = Array.from(document.querySelectorAll('.file-type-filter:checked'))
         .map(cb => cb.value);
     
     if (activeFilters.length > 0) {
         filteredFiles = filteredFiles.filter(file => {
-            // Определяем тип файла
             let fileType = '';
             
             if (file.isUnlockFile) {
@@ -3646,7 +4073,6 @@ function renderAllFilesList(allFiles, searchTerm = '') {
                 fileType = 'pending';
             }
             
-            // Проверяем соответствие фильтрам
             const matchesType = activeFilters.includes(file.folderType) || 
                                activeFilters.includes(fileType);
             
@@ -3654,7 +4080,6 @@ function renderAllFilesList(allFiles, searchTerm = '') {
         });
     }
     
-    // Пагинация
     const itemsPerPage = 50;
     const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
     let currentPage = 1;
@@ -3677,14 +4102,12 @@ function renderAllFilesList(allFiles, searchTerm = '') {
             return;
         }
         
-        // Рендерим файлы
         container.innerHTML = pageFiles.map((file, index) => {
             const number = start + index + 1;
             const isGraded = file.graded && !file.isUnlockFile;
             const isPending = !file.graded && !file.isUnlockFile;
             const isUnlock = file.isUnlockFile;
             
-            // Определяем иконку и цвет
             let icon = '📄';
             let typeColor = 'var(--text-muted)';
             let statusText = '';
@@ -3703,7 +4126,6 @@ function renderAllFilesList(allFiles, searchTerm = '') {
                 statusText = 'Ожидает оценки';
             }
             
-            // Форматируем дату
             const date = file.date || 'Неизвестно';
             
             return `
@@ -3763,16 +4185,13 @@ function renderAllFilesList(allFiles, searchTerm = '') {
             `;
         }).join('');
         
-        // Рендерим пагинацию
         if (totalPages > 1) {
             let paginationHTML = '<div style="display: flex; justify-content: center; gap: 5px; flex-wrap: wrap;">';
             
-            // Кнопка "Назад"
             if (currentPage > 1) {
                 paginationHTML += `<button class="btn small pagination-btn" data-page="${currentPage - 1}">← Назад</button>`;
             }
             
-            // Номера страниц
             const maxVisiblePages = 5;
             let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
             let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -3789,7 +4208,6 @@ function renderAllFilesList(allFiles, searchTerm = '') {
                 }
             }
             
-            // Кнопка "Вперед"
             if (currentPage < totalPages) {
                 paginationHTML += `<button class="btn small pagination-btn" data-page="${currentPage + 1}">Вперед →</button>`;
             }
@@ -3805,7 +4223,6 @@ function renderAllFilesList(allFiles, searchTerm = '') {
                 </div>
             `;
             
-            // Обработчики для кнопок пагинации
             document.querySelectorAll('.pagination-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const page = parseInt(btn.dataset.page);
@@ -3820,17 +4237,13 @@ function renderAllFilesList(allFiles, searchTerm = '') {
             `;
         }
         
-        // Добавляем обработчики для кнопок файлов
         addAllFilesEventListeners();
     }
     
-    // Начинаем с первой страницы
     renderPage(1);
 }
 
-// === ФУНКЦИЯ ДЛЯ ОБРАБОТКИ СОБЫТИЙ ФАЙЛОВ ===
 function addAllFilesEventListeners() {
-    // Просмотр файла
     document.querySelectorAll('.view-all-file-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const fileId = e.target.dataset.fileId;
@@ -3851,7 +4264,6 @@ function addAllFilesEventListeners() {
         });
     });
     
-    // Скачивание файла
     document.querySelectorAll('.download-all-file-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const fileContent = e.target.dataset.fileContent;
@@ -3871,7 +4283,6 @@ function addAllFilesEventListeners() {
         });
     });
     
-    // Удаление файла
     document.querySelectorAll('.delete-all-file-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const fileId = e.target.dataset.fileId;
@@ -3884,7 +4295,6 @@ function addAllFilesEventListeners() {
                 
                 if (success) {
                     showMessage('Файл удален', 'success');
-                    // Перезагружаем список файлов
                     const allFiles = getAllFilesFromEmployees();
                     const searchTerm = document.getElementById('allFilesSearch')?.value || '';
                     renderAllFilesList(allFiles, searchTerm);
@@ -3896,7 +4306,6 @@ function addAllFilesEventListeners() {
     });
 }
 
-// === ФУНКЦИЯ УДАЛЕНИЯ ФАЙЛА ===
 function deleteAllFilesFile(employeeId, folderType, fileId) {
     try {
         const employeesData = loadEmployeesData();
@@ -3906,12 +4315,11 @@ function deleteAllFilesFile(employeeId, folderType, fileId) {
             return false;
         }
         
-        // Удаляем файл из массива
         const initialLength = employee.files[folderType].length;
         employee.files[folderType] = employee.files[folderType].filter(file => file.id !== fileId);
         
         if (employee.files[folderType].length === initialLength) {
-            return false; // Файл не был найден
+            return false;
         }
         
         saveEmployeesData(employeesData);
@@ -3922,24 +4330,18 @@ function deleteAllFilesFile(employeeId, folderType, fileId) {
     }
 }
 
-// === ФУНКЦИИ ДЛЯ УДАЛЕНИЯ ТЕСТОВ ИЗ СТАТИСТИКИ ===
-
-// Функция для удаления конкретного теста
 function deleteSpecificTest(testId, username, testType) {
     if (!confirm(`Удалить тест сотрудника "${username}" (${getTestTypeName(testType)})?\n\nЭто действие нельзя отменить!`)) {
         return false;
     }
     
-    // Удаляем из статистики
     const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
     const initialLength = statistics.length;
     
     const updatedStatistics = statistics.filter(test => {
-        // Если указан конкретный ID, удаляем по ID
         if (testId) {
             return test.id !== testId;
         }
-        // Иначе удаляем по имени и типу
         return !(test.username === username && test.testType === testType);
     });
     
@@ -3950,7 +4352,6 @@ function deleteSpecificTest(testId, username, testType) {
     
     localStorage.setItem('testStatistics', JSON.stringify(updatedStatistics));
     
-    // Также удаляем из pendingTestResults, если есть
     const pendingResults = JSON.parse(localStorage.getItem('pendingTestResults') || '[]');
     const updatedPending = pendingResults.filter(test => {
         if (testId) {
@@ -3963,7 +4364,6 @@ function deleteSpecificTest(testId, username, testType) {
         localStorage.setItem('pendingTestResults', JSON.stringify(updatedPending));
     }
     
-    // Удаляем из adminFiles, если файл был загружен
     const adminFiles = JSON.parse(localStorage.getItem('adminFiles') || '[]');
     const updatedAdminFiles = adminFiles.filter(file => {
         const fileUsername = file.username || extractUsernameFromFilename(file.name);
@@ -3982,18 +4382,15 @@ function deleteSpecificTest(testId, username, testType) {
     
     showMessage(`Тест сотрудника "${username}" удален из статистики`, 'success');
     
-    // Обновляем отображение
     renderAdmin();
     return true;
 }
 
-// Функция для удаления всех тестов определенного типа
 function deleteAllTestsByType(testType) {
     if (!confirm(`Удалить ВСЕ тесты типа "${getTestTypeName(testType)}"?\n\nЭто действие нельзя отменить!`)) {
         return false;
     }
     
-    // Удаляем из статистики
     const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
     const initialLength = statistics.length;
     
@@ -4006,7 +4403,6 @@ function deleteAllTestsByType(testType) {
     
     localStorage.setItem('testStatistics', JSON.stringify(updatedStatistics));
     
-    // Удаляем из pendingTestResults
     const pendingResults = JSON.parse(localStorage.getItem('pendingTestResults') || '[]');
     const updatedPending = pendingResults.filter(test => test.testType !== testType);
     
@@ -4016,18 +4412,15 @@ function deleteAllTestsByType(testType) {
     
     showMessage(`Все тесты типа "${getTestTypeName(testType)}" удалены`, 'success');
     
-    // Обновляем отображение
     renderAdmin();
     return true;
 }
 
-// Функция для удаления всех тестов сотрудника
 function deleteAllTestsByEmployee(username) {
     if (!confirm(`Удалить ВСЕ тесты сотрудника "${username}"?\n\nЭто действие нельзя отменить!`)) {
         return false;
     }
     
-    // Удаляем из статистики
     const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
     const initialLength = statistics.length;
     
@@ -4040,7 +4433,6 @@ function deleteAllTestsByEmployee(username) {
     
     localStorage.setItem('testStatistics', JSON.stringify(updatedStatistics));
     
-    // Удаляем из pendingTestResults
     const pendingResults = JSON.parse(localStorage.getItem('pendingTestResults') || '[]');
     const updatedPending = pendingResults.filter(test => test.username !== username);
     
@@ -4050,12 +4442,10 @@ function deleteAllTestsByEmployee(username) {
     
     showMessage(`Все тесты сотрудника "${username}" удалены`, 'success');
     
-    // Обновляем отображение
     renderAdmin();
     return true;
 }
 
-// Функция для открытия модального окна управления тестами
 function openTestManagementModal() {
     const statistics = JSON.parse(localStorage.getItem('testStatistics') || '[]');
     const gradedTests = statistics.filter(test => test.graded === true);
@@ -4065,7 +4455,6 @@ function openTestManagementModal() {
         return;
     }
     
-    // Группируем тесты по сотрудникам
     const testsByEmployee = {};
     gradedTests.forEach(test => {
         if (!testsByEmployee[test.username]) {
@@ -4074,7 +4463,6 @@ function openTestManagementModal() {
         testsByEmployee[test.username].push(test);
     });
     
-    // Сортируем сотрудников по имени
     const sortedEmployees = Object.keys(testsByEmployee).sort();
     
     const modal = document.createElement('div');
@@ -4088,7 +4476,6 @@ function openTestManagementModal() {
                 <button class="btn small ghost" id="closeTestManagementModal">✖ Закрыть</button>
             </div>
             
-            <!-- Кнопки массовых действий -->
             <div style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
                 <h4 style="margin-top: 0;">⚡ Быстрые действия</h4>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -4107,7 +4494,6 @@ function openTestManagementModal() {
                 </div>
             </div>
             
-            <!-- Поиск и фильтры -->
             <div style="margin-bottom: 20px;">
                 <input type="text" 
                        id="testSearchInput" 
@@ -4116,7 +4502,6 @@ function openTestManagementModal() {
                        onkeyup="filterTestList()">
             </div>
             
-            <!-- Список тестов -->
             <div id="testListContainer" style="overflow-y: auto; max-height: 60vh; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.2);">
                 ${sortedEmployees.map(username => {
                     const tests = testsByEmployee[username];
@@ -4192,12 +4577,10 @@ function openTestManagementModal() {
     
     document.body.appendChild(modal);
     
-    // Обработчики событий
     document.getElementById('closeTestManagementModal').addEventListener('click', () => {
         modal.remove();
     });
     
-    // Добавляем стили
     if (!document.querySelector('#testManagementStyles')) {
         const styles = document.createElement('style');
         styles.id = 'testManagementStyles';
@@ -4281,9 +4664,7 @@ function openTestManagementModal() {
     }
 }
 
-// Функция для рендеринга списка тестов
 function renderTestListItems(tests) {
-    // Сортируем по дате (новые сверху)
     tests.sort((a, b) => new Date(b.date) - new Date(a.date));
     
     return tests.map(test => {
@@ -4312,7 +4693,6 @@ function renderTestListItems(tests) {
     }).join('');
 }
 
-// Функция фильтрации списка тестов
 function filterTestList() {
     const searchInput = document.getElementById('testSearchInput');
     if (!searchInput) return;
@@ -4331,7 +4711,6 @@ function filterTestList() {
     });
 }
 
-// Функция удаления ВСЕХ тестов
 function deleteAllTests() {
     if (!confirm('ВНИМАНИЕ! Удалить ВСЕ тесты из статистики?\n\nЭто действие нельзя отменить!')) {
         return;
@@ -4342,7 +4721,6 @@ function deleteAllTests() {
     
     showMessage('Все тесты удалены', 'success');
     
-    // Закрываем модалку и обновляем статистику
     const modal = document.querySelector('.modal-overlay[style*="z-index: 10003"]');
     if (modal) modal.remove();
     
@@ -4361,11 +4739,9 @@ function renderAdmin() {
     area.innerHTML = `
         <div class="admin-container">
             <div class="admin-layout">
-                <!-- ЛЕВАЯ КОЛОНКА - СОТРУДНИКИ -->
                 <div class="admin-employees-sidebar">
                     <h3>👥 Состав Военной Полиции</h3>
                     
-                    <!-- СТАТИСТИКА СОТРУДНИКОВ -->
                     <div class="employees-stats">
                         <div class="employee-stat">
                             <div class="stat-value">${totalPositions}</div>
@@ -4381,10 +4757,8 @@ function renderAdmin() {
                         </div>
                     </div>
                     
-                    <!-- ФИКСИРОВАННАЯ СЕТКА СОТРУДНИКОВ -->
                     ${renderFixedEmployees(employeesData)}
                     
-                    <!-- БЛОК "ВСЕ ФАЙЛЫ СИСТЕМЫ" -->
                     <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
                         <h3 style="margin-top: 0; color: var(--accent);">📁 Все файлы системы</h3>
                         <p class="small" style="margin-bottom: 15px;">Просмотр и управление всеми файлами тестов и разблокировок</p>
@@ -4396,7 +4770,6 @@ function renderAdmin() {
                     </div>
                 </div>
 
-                <!-- ПРАВАЯ КОЛОНКА - ОСНОВНОЙ КОНТЕНТ -->
                 <div class="admin-main-panel">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h2 style="color: var(--accent); margin: 0;">📊 Админ-панель</h2>
@@ -4407,11 +4780,9 @@ function renderAdmin() {
                         </div>
                     </div>
                     
-                    <!-- БЛОК СТАТИСТИКИ -->
                     <div class="stats-container">
                         <h3>📈 Статистика тестирования</h3>
                         
-                        <!-- Ключевые метрики -->
                         <div class="stats-grid">
                             <div class="stat-card">
                                 <div class="stat-icon">📊</div>
@@ -4444,7 +4815,6 @@ function renderAdmin() {
                             </div>
                         </div>
                         
-                        <!-- Детальная статистика -->
                         <div class="chart-container">
                             <div class="chart-card">
                                 <h4>📊 Распределение оценок</h4>
@@ -4457,7 +4827,6 @@ function renderAdmin() {
                             </div>
                         </div>
                         
-                        <!-- Рейтинги и последние результаты -->
                         <div class="chart-container">
                             <div class="chart-card">
                                 <h4>🏆 Топ-10 результатов</h4>
@@ -4483,7 +4852,6 @@ function renderAdmin() {
                         </div>
                     </div>
                     
-                    <!-- ТЕСТЫ, ОЖИДАЮЩИЕ ОЦЕНКИ -->
                     <div style="margin-bottom: 30px;">
                         <h3>⏳ Тесты, ожидающие оценку</h3>
                         <div class="pending-tests">
@@ -4491,7 +4859,6 @@ function renderAdmin() {
                         </div>
                     </div>
                     
-                    <!-- УПРАВЛЕНИЕ ИГРОКАМИ -->
                     <div style="margin-bottom: 30px;">
                         <h3>👥 Управление игроками</h3>
                         <div class="players-management">
@@ -4505,7 +4872,6 @@ function renderAdmin() {
                         </div>
                     </div>
                     
-                    <!-- ЗАГРУЗКА И ПРОВЕРКА РЕЗУЛЬТАТОВ -->
                     <div style="margin-bottom: 30px;">
                         <h3>📁 Загрузка и проверка результатов</h3>
                         <p>Загрузите файлы результатов тестов для проверки.</p>
@@ -4564,10 +4930,8 @@ function renderAdmin() {
         });
     }
     
-    // Обработчик для кнопки "Все файлы"
     document.getElementById('showAllFilesBtn')?.addEventListener('click', openAllFilesModal);
     
-    // Добавляем обработчики для переключения вкладок рейтинга
     const rankingTabs = document.querySelectorAll('.ranking-tabs .btn');
     rankingTabs.forEach(tab => {
         tab.addEventListener('click', function() {
@@ -4583,31 +4947,25 @@ function renderAdmin() {
 function switchRankingTab(type) {
     const stats = calculateStats();
     let ranking;
-    let title;
     
     switch(type) {
         case 'exam':
             ranking = stats.examRanking;
-            title = '🎓 Экзамены';
             break;
         case 'academy':
             ranking = stats.academyRanking;
-            title = '📚 Академия';
             break;
         case 'retraining':
             ranking = stats.retrainingRanking;
-            title = '🔄 Переаттестация';
             break;
         default:
             ranking = stats.examRanking;
-            title = '🎓 Экзамены';
     }
     
     const rankingContent = document.getElementById('rankingContent');
     if (rankingContent) {
         rankingContent.innerHTML = renderRanking(ranking, type);
         
-        // Анимируем новые элементы
         setTimeout(() => {
             const items = rankingContent.querySelectorAll('.ranking-item');
             items.forEach((item, index) => {
@@ -4617,17 +4975,4 @@ function switchRankingTab(type) {
     }
 }
 
-// --- ИНИЦИАЛИЗАЦИЯ ---
-document.addEventListener('DOMContentLoaded', initUI);  
-
-
-
-
-
-
-
-
-
-
-
-
+document.addEventListener('DOMContentLoaded', initUI);
