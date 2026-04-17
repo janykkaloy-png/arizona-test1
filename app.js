@@ -11,8 +11,8 @@ let playersDatabase = JSON.parse(localStorage.getItem('playersDatabase') || '[]'
 const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Jan_Abobbi' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Chaffy_Washington' },
-    { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Вакантно' },
-    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Gustavo_Mendez' },
+    { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Gustavo_Mendez' },
+    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Kirito_Sugimoto' },
     { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Tendo_Izumi' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Basim_Valhalla' },
     { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Bob_Yor' },
