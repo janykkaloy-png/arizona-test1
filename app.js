@@ -12,16 +12,16 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'curator', position: 'Куратор ВП', type: 'curator', username: 'Gustavo_Mendez' },
     { id: 'senior_officer_2', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Chaffy_Washington' },
     { id: 'senior_officer_1', position: 'Старший офицер ВП', type: 'senior_officer', username: 'Akashi_Miyazuki' },
-    { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Bob_Yor' },
+    { id: 'officer_4', position: 'Офицер ВП', type: 'officer', username: 'Rene_Lunterra' },
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Ralph_Laurence' },
-    { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Ivan_Keporisov' },
-    { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Veston_Stokov' },
+    { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Umar_Sildinskiy' },
+    { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Dear_Scaletto' },
     { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Sato_Takahashi' },
-    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Watson_Peterson' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
-    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Sigizmund_Burmolda' },
-    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Maximiliano_Alwarez' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Dragon_Kot' }
+    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Goro_Lunterra' },
+    { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Enrico_Coffee' },
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Drowning_Lessons' }
 ];
 
 //==========================================================================================================================================
