@@ -16,12 +16,12 @@ const FIXED_EMPLOYEE_STRUCTURE = [
     { id: 'officer_5', position: 'Офицер ВП', type: 'officer', username: 'Ralph_Laurence' },
     { id: 'officer_3', position: 'Офицер ВП', type: 'officer', username: 'Dear_Scaletto' },
     { id: 'officer_1', position: 'Офицер ВП', type: 'officer', username: 'Watson_Peterson' },
-    { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
-    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
+    { id: 'officer_6', position: 'Офицер ВП', type: 'officer', username: 'Goro_Lunterra' },
+    { id: 'officer_2', position: 'Офицер ВП', type: 'officer', username: 'Drowning_Lessons' },
     { id: 'officer_7', position: 'Офицер ВП', type: 'officer', username: 'Вакантно' },
-    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Goro_Lunterra' },
     { id: 'cadet_2', position: 'Курсант ВП', type: 'cadet', username: 'Enrico_Coffee' },
-    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Drowning_Lessons' }
+    { id: 'cadet_1', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' },
+    { id: 'cadet_3', position: 'Курсант ВП', type: 'cadet', username: 'Вакантно' }
 ];
 
 //==========================================================================================================================================
